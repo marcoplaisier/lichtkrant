@@ -42,6 +42,18 @@ class WebConfig:
 
 
 @dataclass
+class DatabaseConfig:
+    """Database configuration."""
+
+    path: str = "~/.lichtkrant/texts.db"
+
+    @property
+    def resolved_path(self) -> Path:
+        """Return expanded path."""
+        return Path(self.path).expanduser()
+
+
+@dataclass
 class Config:
     """Main configuration container."""
 
@@ -49,6 +61,7 @@ class Config:
     gpio: GPIOConfig = field(default_factory=GPIOConfig)
     wifi: WiFiConfig = field(default_factory=WiFiConfig)
     web: WebConfig = field(default_factory=WebConfig)
+    database: DatabaseConfig = field(default_factory=DatabaseConfig)
 
     @classmethod
     def load(cls, path: Path | str = "/etc/lichtkrant/config.yaml") -> Config:
@@ -65,6 +78,7 @@ class Config:
             gpio=GPIOConfig(**data.get("gpio", {})),
             wifi=WiFiConfig(**data.get("wifi", {})),
             web=WebConfig(**data.get("web", {})),
+            database=DatabaseConfig(**data.get("database", {})),
         )
 
     def save(self, path: Path | str = "/etc/lichtkrant/config.yaml") -> None:
@@ -89,6 +103,9 @@ class Config:
             "web": {
                 "host": self.web.host,
                 "port": self.web.port,
+            },
+            "database": {
+                "path": self.database.path,
             },
         }
 

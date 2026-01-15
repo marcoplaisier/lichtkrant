@@ -17,10 +17,41 @@
             color: #eee;
             min-height: 100vh;
         }
-        h1 {
+        h1, h2 {
             text-align: center;
             color: #00ff88;
             text-shadow: 0 0 10px #00ff8855;
+        }
+        h2 {
+            font-size: 1.3em;
+            margin-top: 40px;
+        }
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .tab {
+            flex: 1;
+            padding: 12px;
+            background: #16213e;
+            border: none;
+            color: #aaa;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        .tab.active {
+            background: #00ff88;
+            color: #1a1a2e;
+            font-weight: bold;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
         }
         .form-group {
             margin-bottom: 20px;
@@ -47,23 +78,36 @@
         input[type="range"] {
             width: 100%;
         }
-        button {
-            width: 100%;
+        button, .btn {
             padding: 15px;
             background: linear-gradient(135deg, #00ff88, #00cc6a);
             border: none;
             border-radius: 8px;
             color: #1a1a2e;
-            font-size: 18px;
+            font-size: 16px;
             font-weight: bold;
             cursor: pointer;
             transition: transform 0.1s;
         }
-        button:hover {
+        button:hover, .btn:hover {
             transform: scale(1.02);
         }
-        button:active {
+        button:active, .btn:active {
             transform: scale(0.98);
+        }
+        .btn-full {
+            width: 100%;
+        }
+        .btn-small {
+            padding: 8px 12px;
+            font-size: 12px;
+        }
+        .btn-danger {
+            background: linear-gradient(135deg, #ff6666, #cc4444);
+        }
+        .btn-secondary {
+            background: linear-gradient(135deg, #666, #444);
+            color: #fff;
         }
         .status {
             text-align: center;
@@ -79,96 +123,230 @@
             background: #ff006633;
             color: #ff6666;
         }
-        .color-preview {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border-radius: 4px;
-            vertical-align: middle;
-            margin-right: 8px;
-        }
         .speed-value {
             text-align: center;
             color: #00ff88;
             font-family: monospace;
+        }
+        .text-list {
+            margin-top: 20px;
+        }
+        .text-item {
+            background: #16213e;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-left: 4px solid #333;
+        }
+        .text-item.active {
+            border-left-color: #00ff88;
+        }
+        .text-item.inactive {
+            opacity: 0.6;
+        }
+        .text-content {
+            font-size: 16px;
+            margin-bottom: 10px;
+            word-break: break-word;
+        }
+        .text-meta {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 10px;
+        }
+        .text-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            margin-right: 4px;
+        }
+        .badge-color {
+            background: #333;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .checkbox-group input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
         }
     </style>
 </head>
 <body>
     <h1>Lichtkrant</h1>
 
-    <form id="messageForm">
-        <div class="form-group">
-            <label for="text">Message</label>
-            <input type="text" id="text" name="text" placeholder="Enter your message..." maxlength="200" required>
+    <div class="tabs">
+        <button class="tab active" data-tab="texts">Stored Texts</button>
+        <button class="tab" data-tab="direct">Direct Send</button>
+    </div>
+
+    <div id="texts-tab" class="tab-content active">
+        <form id="textForm">
+            <input type="hidden" id="editId" value="">
+
+            <div class="form-group">
+                <label for="content">Message</label>
+                <input type="text" id="content" name="content" placeholder="Enter your message..." maxlength="200" required>
+            </div>
+
+            <div class="form-group">
+                <label for="textColor">Text Color</label>
+                <select id="textColor" name="color">
+                    <option value="WHITE">White</option>
+                    <option value="GREEN">Green</option>
+                    <option value="RED">Red</option>
+                    <option value="BLUE">Blue</option>
+                    <option value="YELLOW">Yellow</option>
+                    <option value="CYAN">Cyan</option>
+                    <option value="MAGENTA">Magenta</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="textBackground">Background</label>
+                <select id="textBackground" name="background">
+                    <option value="NONE">None (Black)</option>
+                    <option value="GREEN">Green</option>
+                    <option value="RED">Red</option>
+                    <option value="BLUE">Blue</option>
+                    <option value="YELLOW">Yellow</option>
+                    <option value="CYAN">Cyan</option>
+                    <option value="MAGENTA">Magenta</option>
+                    <option value="WHITE">White</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="textFont">Font</label>
+                <select id="textFont" name="font">
+                    <option value="KONGTEXT">Kongtext</option>
+                    <option value="CUSTOM">Custom</option>
+                    <option value="MUNRO_SMALL">Munro Small</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="textSpeed">Scroll Speed</label>
+                <input type="range" id="textSpeed" name="speed" min="1" max="255" value="32">
+                <div class="speed-value" id="textSpeedValue">32</div>
+            </div>
+
+            <div class="form-group checkbox-group">
+                <input type="checkbox" id="textActive" name="active" checked>
+                <label for="textActive" style="margin-bottom: 0;">Active (include in rotation)</label>
+            </div>
+
+            <button type="submit" class="btn-full" id="submitBtn">Add Text</button>
+            <button type="button" class="btn-full btn-secondary" id="cancelEdit" style="display: none; margin-top: 10px;">Cancel Edit</button>
+        </form>
+
+        <div id="textStatus" class="status" style="display: none;"></div>
+
+        <h2>Stored Texts</h2>
+        <div id="textList" class="text-list">
+            <div class="empty-state">Loading...</div>
         </div>
+    </div>
 
-        <div class="form-group">
-            <label for="color">Text Color</label>
-            <select id="color" name="color">
-                <option value="WHITE">White</option>
-                <option value="GREEN">Green</option>
-                <option value="RED">Red</option>
-                <option value="BLUE">Blue</option>
-                <option value="YELLOW">Yellow</option>
-                <option value="CYAN">Cyan</option>
-                <option value="MAGENTA">Magenta</option>
-            </select>
-        </div>
+    <div id="direct-tab" class="tab-content">
+        <form id="messageForm">
+            <div class="form-group">
+                <label for="text">Message</label>
+                <input type="text" id="text" name="text" placeholder="Enter your message..." maxlength="200" required>
+            </div>
 
-        <div class="form-group">
-            <label for="background">Background</label>
-            <select id="background" name="background">
-                <option value="NONE">None (Black)</option>
-                <option value="GREEN">Green</option>
-                <option value="RED">Red</option>
-                <option value="BLUE">Blue</option>
-                <option value="YELLOW">Yellow</option>
-                <option value="CYAN">Cyan</option>
-                <option value="MAGENTA">Magenta</option>
-                <option value="WHITE">White</option>
-            </select>
-        </div>
+            <div class="form-group">
+                <label for="color">Text Color</label>
+                <select id="color" name="color">
+                    <option value="WHITE">White</option>
+                    <option value="GREEN">Green</option>
+                    <option value="RED">Red</option>
+                    <option value="BLUE">Blue</option>
+                    <option value="YELLOW">Yellow</option>
+                    <option value="CYAN">Cyan</option>
+                    <option value="MAGENTA">Magenta</option>
+                </select>
+            </div>
 
-        <div class="form-group">
-            <label for="font">Font</label>
-            <select id="font" name="font">
-                <option value="KONGTEXT">Kongtext</option>
-                <option value="CUSTOM">Custom</option>
-                <option value="MUNRO_SMALL">Munro Small</option>
-            </select>
-        </div>
+            <div class="form-group">
+                <label for="background">Background</label>
+                <select id="background" name="background">
+                    <option value="NONE">None (Black)</option>
+                    <option value="GREEN">Green</option>
+                    <option value="RED">Red</option>
+                    <option value="BLUE">Blue</option>
+                    <option value="YELLOW">Yellow</option>
+                    <option value="CYAN">Cyan</option>
+                    <option value="MAGENTA">Magenta</option>
+                    <option value="WHITE">White</option>
+                </select>
+            </div>
 
-        <div class="form-group">
-            <label for="speed">Scroll Speed</label>
-            <input type="range" id="speed" name="speed" min="1" max="255" value="32">
-            <div class="speed-value" id="speedValue">32</div>
-        </div>
+            <div class="form-group">
+                <label for="font">Font</label>
+                <select id="font" name="font">
+                    <option value="KONGTEXT">Kongtext</option>
+                    <option value="CUSTOM">Custom</option>
+                    <option value="MUNRO_SMALL">Munro Small</option>
+                </select>
+            </div>
 
-        <button type="submit">Send to Display</button>
-    </form>
+            <div class="form-group">
+                <label for="speed">Scroll Speed</label>
+                <input type="range" id="speed" name="speed" min="1" max="255" value="32">
+                <div class="speed-value" id="speedValue">32</div>
+            </div>
 
-    <div id="status" class="status" style="display: none;"></div>
+            <button type="submit" class="btn-full">Send to Display</button>
+        </form>
+
+        <div id="status" class="status" style="display: none;"></div>
+    </div>
 
     <script>
-        const form = document.getElementById('messageForm');
-        const status = document.getElementById('status');
-        const speedSlider = document.getElementById('speed');
-        const speedValue = document.getElementById('speedValue');
-
-        speedSlider.addEventListener('input', () => {
-            speedValue.textContent = speedSlider.value;
+        // Tab switching
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                tab.classList.add('active');
+                document.getElementById(tab.dataset.tab + '-tab').classList.add('active');
+            });
         });
 
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
+        // Speed sliders
+        document.getElementById('speed').addEventListener('input', (e) => {
+            document.getElementById('speedValue').textContent = e.target.value;
+        });
+        document.getElementById('textSpeed').addEventListener('input', (e) => {
+            document.getElementById('textSpeedValue').textContent = e.target.value;
+        });
 
+        // Direct send form
+        const messageForm = document.getElementById('messageForm');
+        const status = document.getElementById('status');
+
+        messageForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
             const data = {
                 text: document.getElementById('text').value,
                 color: document.getElementById('color').value,
                 background: document.getElementById('background').value,
                 font: document.getElementById('font').value,
-                speed: parseInt(speedSlider.value)
+                speed: parseInt(document.getElementById('speed').value)
             };
 
             try {
@@ -177,27 +355,164 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(data)
                 });
-
                 const result = await response.json();
-
-                status.style.display = 'block';
-                if (response.ok) {
-                    status.className = 'status success';
-                    status.textContent = `Message sent! (${result.bytes_sent} bytes)`;
-                } else {
-                    status.className = 'status error';
-                    status.textContent = result.error || 'Failed to send message';
-                }
+                showStatus(status, response.ok, response.ok ? `Sent! (${result.bytes_sent} bytes)` : result.error);
             } catch (err) {
-                status.style.display = 'block';
-                status.className = 'status error';
-                status.textContent = 'Connection error';
+                showStatus(status, false, 'Connection error');
+            }
+        });
+
+        // Text management
+        const textForm = document.getElementById('textForm');
+        const textStatus = document.getElementById('textStatus');
+        const textList = document.getElementById('textList');
+        const editId = document.getElementById('editId');
+        const submitBtn = document.getElementById('submitBtn');
+        const cancelBtn = document.getElementById('cancelEdit');
+
+        function showStatus(el, success, message) {
+            el.style.display = 'block';
+            el.className = 'status ' + (success ? 'success' : 'error');
+            el.textContent = message;
+            setTimeout(() => { el.style.display = 'none'; }, 3000);
+        }
+
+        async function loadTexts() {
+            try {
+                const response = await fetch('/texts');
+                const data = await response.json();
+                renderTexts(data.texts || []);
+            } catch (err) {
+                textList.innerHTML = '<div class="empty-state">Failed to load texts</div>';
+            }
+        }
+
+        function renderTexts(texts) {
+            if (texts.length === 0) {
+                textList.innerHTML = '<div class="empty-state">No texts stored yet. Add one above!</div>';
+                return;
             }
 
-            setTimeout(() => {
-                status.style.display = 'none';
-            }, 3000);
+            textList.innerHTML = texts.map(t => `
+                <div class="text-item ${t.active ? 'active' : 'inactive'}">
+                    <div class="text-content">${escapeHtml(t.content)}</div>
+                    <div class="text-meta">
+                        <span class="badge badge-color">${t.color}</span>
+                        <span class="badge badge-color">BG: ${t.background}</span>
+                        <span class="badge badge-color">${t.font}</span>
+                        <span class="badge badge-color">Speed: ${t.speed}</span>
+                        <span class="badge badge-color">#${t.id}</span>
+                    </div>
+                    <div class="text-actions">
+                        <button class="btn btn-small" onclick="toggleActive(${t.id})">${t.active ? 'Deactivate' : 'Activate'}</button>
+                        <button class="btn btn-small btn-secondary" onclick="editText(${t.id})">Edit</button>
+                        <button class="btn btn-small btn-danger" onclick="deleteText(${t.id})">Delete</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        textForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const data = {
+                content: document.getElementById('content').value,
+                color: document.getElementById('textColor').value,
+                background: document.getElementById('textBackground').value,
+                font: document.getElementById('textFont').value,
+                speed: parseInt(document.getElementById('textSpeed').value),
+                active: document.getElementById('textActive').checked
+            };
+
+            const id = editId.value;
+            const url = id ? `/texts/${id}` : '/texts';
+            const method = id ? 'PUT' : 'POST';
+
+            try {
+                const response = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const result = await response.json();
+                if (response.ok) {
+                    showStatus(textStatus, true, id ? 'Text updated!' : 'Text added!');
+                    resetForm();
+                    loadTexts();
+                } else {
+                    showStatus(textStatus, false, result.error);
+                }
+            } catch (err) {
+                showStatus(textStatus, false, 'Connection error');
+            }
         });
+
+        function resetForm() {
+            textForm.reset();
+            editId.value = '';
+            submitBtn.textContent = 'Add Text';
+            cancelBtn.style.display = 'none';
+            document.getElementById('textSpeedValue').textContent = '32';
+        }
+
+        cancelBtn.addEventListener('click', resetForm);
+
+        async function editText(id) {
+            try {
+                const response = await fetch(`/texts/${id}`);
+                const data = await response.json();
+                if (response.ok) {
+                    const t = data.text;
+                    editId.value = t.id;
+                    document.getElementById('content').value = t.content;
+                    document.getElementById('textColor').value = t.color;
+                    document.getElementById('textBackground').value = t.background;
+                    document.getElementById('textFont').value = t.font;
+                    document.getElementById('textSpeed').value = t.speed;
+                    document.getElementById('textSpeedValue').textContent = t.speed;
+                    document.getElementById('textActive').checked = t.active;
+                    submitBtn.textContent = 'Update Text';
+                    cancelBtn.style.display = 'block';
+                    document.getElementById('content').focus();
+                }
+            } catch (err) {
+                showStatus(textStatus, false, 'Failed to load text');
+            }
+        }
+
+        async function deleteText(id) {
+            if (!confirm('Delete this text?')) return;
+            try {
+                const response = await fetch(`/texts/${id}`, { method: 'DELETE' });
+                if (response.ok) {
+                    showStatus(textStatus, true, 'Text deleted!');
+                    loadTexts();
+                } else {
+                    showStatus(textStatus, false, 'Failed to delete');
+                }
+            } catch (err) {
+                showStatus(textStatus, false, 'Connection error');
+            }
+        }
+
+        async function toggleActive(id) {
+            try {
+                const response = await fetch(`/texts/${id}/active`, { method: 'PATCH' });
+                if (response.ok) {
+                    loadTexts();
+                }
+            } catch (err) {
+                showStatus(textStatus, false, 'Connection error');
+            }
+        }
+
+        // Initial load
+        loadTexts();
     </script>
 </body>
 </html>

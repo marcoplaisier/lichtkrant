@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 
 from lichtkrant.config import Config
+from lichtkrant.db import TextRepository
 from lichtkrant.web import create_app
 
 
@@ -47,15 +48,26 @@ def main() -> int:
     # Load configuration
     config = Config.load(args.config)
 
+    # Initialize database repository
+    repository = TextRepository(config.database.resolved_path)
+    print(f"Database initialized at {config.database.resolved_path}")
+
     # Initialize SPI if available and not disabled
     spi_driver = None
+    dispatcher = None
     if not args.no_spi:
         try:
+            from lichtkrant.dispatcher import TextDispatcher
             from lichtkrant.spi import SPIDriver
 
             spi_driver = SPIDriver(config)
             spi_driver.open()
             print(f"SPI initialized on {config.spi.device}")
+
+            # Start the text dispatcher
+            dispatcher = TextDispatcher(config, repository, spi_driver)
+            dispatcher.start()
+            print("Text dispatcher started")
         except Exception as e:
             print(f"Warning: Could not initialize SPI: {e}")
             print("Running in web-only mode")
@@ -77,7 +89,7 @@ def main() -> int:
             print(f"Warning: WiFi setup failed: {e}")
 
     # Create and run Flask app
-    app = create_app(config, spi_driver)
+    app = create_app(config, spi_driver, repository)
 
     try:
         print(f"Starting web server on {config.web.host}:{config.web.port}")
@@ -87,6 +99,8 @@ def main() -> int:
             debug=args.debug,
         )
     finally:
+        if dispatcher:
+            dispatcher.stop()
         if spi_driver:
             spi_driver.close()
 

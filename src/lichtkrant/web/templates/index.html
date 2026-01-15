@@ -502,7 +502,11 @@
 
         async function toggleActive(id) {
             try {
-                const response = await fetch(`/texts/${id}/active`, { method: 'PATCH' });
+                const response = await fetch(`/texts/${id}/active`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: '{}'
+                });
                 if (response.ok) {
                     loadTexts();
                 }

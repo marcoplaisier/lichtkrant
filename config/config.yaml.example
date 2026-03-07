@@ -1,0 +1,16 @@
+spi:
+  device: "/dev/spidev0.0"
+  speed_hz: 500000
+  mode: 0
+
+gpio:
+  request_pin: 17
+  request_active_high: true
+
+wifi:
+  ssid: "Lichtkrant"
+  password: "lichtkrant"
+
+web:
+  host: "0.0.0.0"
+  port: 8080

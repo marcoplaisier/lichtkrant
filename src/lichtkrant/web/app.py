@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flask import Flask, render_template, request
+from flask import Flask, redirect, render_template, request
 
 if TYPE_CHECKING:
     from lichtkrant.config import Config
@@ -20,6 +20,7 @@ def create_app(
     config: Config,
     spi_driver: SPIDriver | None = None,
     repository: TextRepository | None = None,
+    portal_ip: str | None = None,
 ) -> Flask:
     """Create and configure the Flask application."""
     app = Flask(__name__)
@@ -28,6 +29,14 @@ def create_app(
     app.config["REPOSITORY"] = repository
 
     valid_color_names = {c.name for c in Color}
+
+    if portal_ip:
+
+        @app.before_request
+        def captive_portal_redirect():
+            host = request.host.split(":")[0]
+            if host not in ("localhost", "127.0.0.1", portal_ip):
+                return redirect(f"http://{portal_ip}:{config.web.port}/", code=302)
 
     @app.route("/")
     def index() -> str:

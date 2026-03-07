@@ -73,6 +73,7 @@ def main() -> int:
             print("Running in web-only mode")
 
     # Start WiFi access point if not disabled
+    portal_ip = None
     if not args.no_wifi:
         try:
             from lichtkrant.wifi import AccessPoint
@@ -80,16 +81,17 @@ def main() -> int:
             ap = AccessPoint(config)
             if ap.start():
                 print(f"WiFi access point started: {config.wifi.ssid}")
-                ip = ap.get_ip_address()
-                if ip:
-                    print(f"Connect to http://{ip}:{config.web.port}/")
+                portal_ip = ap.get_ip_address()
+                if portal_ip:
+                    print(f"Connect to http://{portal_ip}:{config.web.port}/")
+                    print("Captive portal enabled")
             else:
                 print("Warning: Could not start WiFi access point")
         except Exception as e:
             print(f"Warning: WiFi setup failed: {e}")
 
     # Create and run Flask app
-    app = create_app(config, spi_driver, repository)
+    app = create_app(config, spi_driver, repository, portal_ip=portal_ip)
 
     try:
         print(f"Starting web server on {config.web.host}:{config.web.port}")

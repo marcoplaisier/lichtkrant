@@ -48,8 +48,8 @@ Raspberry Pi software to control a "Lichtkrant" (Dutch: light newspaper) - a scr
 | `#`, 0x01, XX, 0x00 | Pause XX seconds |
 | `#`, 0x02, XX, 0x00 | Fast blink XX times |
 | `#`, 0x03, XX, 0x00 | Slow blink XX times |
-| `#`, 0x04, XX, 0x00 | Flash instant on, hold XX sec, instant off |
-| `#`, 0x05, XX, 0x00 | Flash instant on, hold XX sec, scroll off |
+| `#`, 0x04, XX, 0x00 | Flash instant on, hold XX sec, scroll off |
+| `#`, 0x05, XX, 0x00 | Flash instant on, hold XX sec, instant off |
 | `#`, 0x06, `#`, color | Literal '#' character |
 
 Flash sequences (#4, #5): text until `0xFD`, `0xFD` marker is flash content.
@@ -67,12 +67,12 @@ All settings in `/etc/lichtkrant/config.yaml`:
 ```yaml
 spi:
   device: "/dev/spidev0.0"
-  speed_hz: 500000
+  speed_hz: 125000
   mode: 0
 
 gpio:
   request_pin: 17
-  request_active_high: true
+  request_active_high: false
 
 wifi:
   ssid: "Lichtkrant"

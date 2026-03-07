@@ -43,8 +43,8 @@ class ControlCode(IntEnum):
     PAUSE = 0x01
     FAST_BLINK = 0x02
     SLOW_BLINK = 0x03
-    FLASH_HOLD = 0x04
-    FLASH_SCROLL_OFF = 0x05
+    FLASH_SCROLL_OFF = 0x04
+    FLASH_HOLD = 0x05
     LITERAL_HASH = 0x06
 
 

@@ -13,7 +13,7 @@ class SPIConfig:
     """SPI configuration."""
 
     device: str = "/dev/spidev0.0"
-    speed_hz: int = 500000
+    speed_hz: int = 125000
     mode: int = 0
 
 
@@ -22,7 +22,7 @@ class GPIOConfig:
     """GPIO configuration."""
 
     request_pin: int = 17
-    request_active_high: bool = True
+    request_active_high: bool = False
 
 
 @dataclass

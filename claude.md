@@ -30,7 +30,7 @@ Raspberry Pi software to control a "Lichtkrant" (Dutch: light newspaper) - a scr
 
 | Color | Background | Text |
 |-------|------------|------|
-| None/Black | 0x00 | - |
+| None/Black | 0x00 | 0x00 |
 | Green | 0x84 | 0x10 |
 | Red | 0x88 | 0x20 |
 | Blue | 0x8C | 0x30 |
@@ -82,6 +82,38 @@ web:
   host: "0.0.0.0"
   port: 8080
 ```
+
+## Text Segments API
+
+Texts support per-segment colors and control sequences. Each segment has a `type` field:
+
+```json
+{
+  "segments": [
+    {"type": "text", "text": "Hello ", "color": "RED"},
+    {"type": "pause", "duration": 3},
+    {"type": "fast_blink", "times": 5},
+    {"type": "slow_blink", "times": 3},
+    {"type": "flash", "text": "SALE!", "color": "WHITE", "duration": 5, "scroll_off": true},
+    {"type": "text", "text": " World", "color": "BLUE"}
+  ],
+  "background": "NONE",
+  "font": "KONGTEXT",
+  "speed": 32
+}
+```
+
+### Segment types
+
+| Type | Required fields | Description |
+|------|----------------|-------------|
+| `text` | `text`, `color` | Scrolling text (default if `type` omitted) |
+| `pause` | `duration` (1-255) | Pause scrolling for N seconds |
+| `fast_blink` | `times` (1-255) | Blink display N times (fast) |
+| `slow_blink` | `times` (1-255) | Blink display N times (slow) |
+| `flash` | `text`, `color`, `duration` (1-255), `scroll_off` | Flash text: instant on, hold, then off |
+
+Legacy format (`content` + `color` fields) and segments without `type` key are still accepted for backward compatibility.
 
 ## Constraints
 

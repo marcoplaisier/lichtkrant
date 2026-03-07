@@ -7,6 +7,7 @@ class Color(IntEnum):
     """Color codes for text and background."""
 
     # Text colors
+    NONE = 0x00
     GREEN = 0x10
     RED = 0x20
     BLUE = 0x30

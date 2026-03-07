@@ -183,6 +183,85 @@
             width: 20px;
             height: 20px;
         }
+        .segment-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 8px;
+            align-items: flex-start;
+            flex-wrap: wrap;
+        }
+        .segment-row .segment-main {
+            display: flex;
+            gap: 8px;
+            width: 100%;
+            align-items: center;
+        }
+        .segment-row .segment-main select.seg-type {
+            width: 120px;
+            flex-shrink: 0;
+        }
+        .segment-row .segment-main input[type="text"] {
+            flex: 1;
+        }
+        .segment-row .segment-main select.seg-color {
+            width: 130px;
+            flex-shrink: 0;
+        }
+        .segment-row .segment-main .btn-remove {
+            padding: 10px 12px;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+        .segment-row .segment-extra {
+            display: flex;
+            gap: 8px;
+            width: 100%;
+            padding-left: 128px;
+            align-items: center;
+        }
+        .segment-row .segment-extra label {
+            margin: 0;
+            font-size: 12px;
+            white-space: nowrap;
+        }
+        .segment-row .segment-extra input[type="number"] {
+            width: 80px;
+            padding: 8px;
+            border: 2px solid #333;
+            border-radius: 8px;
+            background: #16213e;
+            color: #fff;
+            font-size: 14px;
+        }
+        .segment-row .segment-extra input[type="number"]:focus {
+            outline: none;
+            border-color: #00ff88;
+        }
+        .segment-row .segment-extra .checkbox-group {
+            gap: 6px;
+        }
+        .segment-row .segment-extra .checkbox-group input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+        }
+        .btn-add-segment {
+            padding: 10px;
+            font-size: 13px;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+        .segment-color-indicator {
+            display: inline-block;
+            padding: 1px 6px;
+            border-radius: 3px;
+            font-size: 11px;
+            margin-right: 2px;
+        }
+        .badge-control {
+            background: #2a1a4e;
+            border: 1px solid #8855cc44;
+            color: #cc88ff;
+        }
     </style>
 </head>
 <body>
@@ -198,21 +277,9 @@
             <input type="hidden" id="editId" value="">
 
             <div class="form-group">
-                <label for="content">Message</label>
-                <input type="text" id="content" name="content" placeholder="Enter your message..." maxlength="200" required>
-            </div>
-
-            <div class="form-group">
-                <label for="textColor">Text Color</label>
-                <select id="textColor" name="color">
-                    <option value="WHITE">White</option>
-                    <option value="GREEN">Green</option>
-                    <option value="RED">Red</option>
-                    <option value="BLUE">Blue</option>
-                    <option value="YELLOW">Yellow</option>
-                    <option value="CYAN">Cyan</option>
-                    <option value="MAGENTA">Magenta</option>
-                </select>
+                <label>Text Segments</label>
+                <div id="segmentsContainer"></div>
+                <button type="button" class="btn-add-segment btn-secondary" id="addSegmentBtn">+ Add Segment</button>
             </div>
 
             <div class="form-group">
@@ -271,7 +338,8 @@
             <div class="form-group">
                 <label for="color">Text Color</label>
                 <select id="color" name="color">
-                    <option value="WHITE">White</option>
+                    <option value="NONE">None (Black)</option>
+                    <option value="WHITE" selected>White</option>
                     <option value="GREEN">Green</option>
                     <option value="RED">Red</option>
                     <option value="BLUE">Blue</option>
@@ -317,6 +385,30 @@
     </div>
 
     <script>
+        const COLOR_OPTIONS = `
+            <option value="NONE">None (Black)</option>
+            <option value="WHITE" selected>White</option>
+            <option value="GREEN">Green</option>
+            <option value="RED">Red</option>
+            <option value="BLUE">Blue</option>
+            <option value="YELLOW">Yellow</option>
+            <option value="CYAN">Cyan</option>
+            <option value="MAGENTA">Magenta</option>
+        `;
+
+        const TYPE_OPTIONS = `
+            <option value="text">Text</option>
+            <option value="pause">Pause</option>
+            <option value="fast_blink">Fast Blink</option>
+            <option value="slow_blink">Slow Blink</option>
+            <option value="flash">Flash</option>
+        `;
+
+        const COLOR_CSS = {
+            NONE: '#000', GREEN: '#0f0', RED: '#f44', BLUE: '#48f',
+            YELLOW: '#ff0', CYAN: '#0ff', MAGENTA: '#f0f', WHITE: '#fff'
+        };
+
         // Tab switching
         document.querySelectorAll('.tab').forEach(tab => {
             tab.addEventListener('click', () => {
@@ -334,6 +426,113 @@
         document.getElementById('textSpeed').addEventListener('input', (e) => {
             document.getElementById('textSpeedValue').textContent = e.target.value;
         });
+
+        // Segment management
+        const segmentsContainer = document.getElementById('segmentsContainer');
+
+        function updateSegmentFields(row) {
+            const type = row.querySelector('.seg-type').value;
+            const textInput = row.querySelector('.seg-text');
+            const colorSelect = row.querySelector('.seg-color');
+            const extraDiv = row.querySelector('.segment-extra');
+
+            // Show/hide main fields
+            textInput.style.display = (type === 'text' || type === 'flash') ? '' : 'none';
+            colorSelect.style.display = (type === 'text' || type === 'flash') ? '' : 'none';
+            textInput.placeholder = type === 'flash' ? 'Flash text...' : 'Enter text...';
+
+            // Build extra fields
+            let extraHtml = '';
+            if (type === 'pause') {
+                const dur = extraDiv.dataset.duration || '2';
+                extraHtml = `<label>Duration (s):</label><input type="number" class="seg-duration" min="1" max="255" value="${dur}">`;
+            } else if (type === 'fast_blink' || type === 'slow_blink') {
+                const times = extraDiv.dataset.times || '3';
+                extraHtml = `<label>Times:</label><input type="number" class="seg-times" min="1" max="255" value="${times}">`;
+            } else if (type === 'flash') {
+                const dur = extraDiv.dataset.duration || '2';
+                const scrollOff = extraDiv.dataset.scrollOff === 'true';
+                extraHtml = `<label>Hold (s):</label><input type="number" class="seg-duration" min="1" max="255" value="${dur}">
+                    <div class="checkbox-group"><input type="checkbox" class="seg-scroll-off" ${scrollOff ? 'checked' : ''}><label>Scroll off</label></div>`;
+            }
+            extraDiv.innerHTML = extraHtml;
+            extraDiv.style.display = extraHtml ? '' : 'none';
+        }
+
+        function addSegmentRow(opts = {}) {
+            const { text = '', color = 'WHITE', type = 'text', duration = 2, times = 3, scroll_off = false } = opts;
+            const row = document.createElement('div');
+            row.className = 'segment-row';
+            row.innerHTML = `
+                <div class="segment-main">
+                    <select class="seg-type">${TYPE_OPTIONS}</select>
+                    <input type="text" class="seg-text" placeholder="Enter text..." maxlength="200" value="${escapeAttr(text)}">
+                    <select class="seg-color">${COLOR_OPTIONS}</select>
+                    <button type="button" class="btn btn-small btn-danger btn-remove">X</button>
+                </div>
+                <div class="segment-extra" data-duration="${duration}" data-times="${times}" data-scroll-off="${scroll_off}"></div>
+            `;
+            row.querySelector('.seg-type').value = type;
+            row.querySelector('.seg-color').value = color;
+            row.querySelector('.btn-remove').addEventListener('click', () => {
+                row.remove();
+                if (segmentsContainer.children.length === 0) {
+                    addSegmentRow();
+                }
+            });
+            row.querySelector('.seg-type').addEventListener('change', () => updateSegmentFields(row));
+            segmentsContainer.appendChild(row);
+            updateSegmentFields(row);
+        }
+
+        document.getElementById('addSegmentBtn').addEventListener('click', () => {
+            addSegmentRow();
+        });
+
+        function getSegments() {
+            const rows = segmentsContainer.querySelectorAll('.segment-row');
+            const segments = [];
+            rows.forEach(row => {
+                const type = row.querySelector('.seg-type').value;
+                if (type === 'text') {
+                    const text = row.querySelector('.seg-text').value;
+                    const color = row.querySelector('.seg-color').value;
+                    if (text) segments.push({ type, text, color });
+                } else if (type === 'pause') {
+                    const duration = parseInt(row.querySelector('.seg-duration')?.value || '2');
+                    segments.push({ type, duration });
+                } else if (type === 'fast_blink' || type === 'slow_blink') {
+                    const times = parseInt(row.querySelector('.seg-times')?.value || '3');
+                    segments.push({ type, times });
+                } else if (type === 'flash') {
+                    const text = row.querySelector('.seg-text').value;
+                    const color = row.querySelector('.seg-color').value;
+                    const duration = parseInt(row.querySelector('.seg-duration')?.value || '2');
+                    const scroll_off = row.querySelector('.seg-scroll-off')?.checked || false;
+                    if (text) segments.push({ type, text, color, duration, scroll_off });
+                }
+            });
+            return segments;
+        }
+
+        function setSegments(segments) {
+            segmentsContainer.innerHTML = '';
+            if (segments.length === 0) {
+                addSegmentRow();
+            } else {
+                segments.forEach(s => addSegmentRow({
+                    text: s.text || '',
+                    color: s.color || 'WHITE',
+                    type: s.type || 'text',
+                    duration: s.duration || 2,
+                    times: s.times || 3,
+                    scroll_off: s.scroll_off || false,
+                }));
+            }
+        }
+
+        // Initialize with one empty segment row
+        addSegmentRow();
 
         // Direct send form
         const messageForm = document.getElementById('messageForm');
@@ -377,6 +576,33 @@
             setTimeout(() => { el.style.display = 'none'; }, 3000);
         }
 
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function escapeAttr(text) {
+            return text.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+
+        function renderSegmentBadges(segments) {
+            if (!segments || segments.length === 0) return '';
+            return segments.map(s => {
+                const type = s.type || 'text';
+                if (type === 'pause') {
+                    return `<span class="segment-color-indicator badge-control">[Pause ${s.duration}s]</span>`;
+                } else if (type === 'fast_blink') {
+                    return `<span class="segment-color-indicator badge-control">[Fast Blink x${s.times}]</span>`;
+                } else if (type === 'slow_blink') {
+                    return `<span class="segment-color-indicator badge-control">[Slow Blink x${s.times}]</span>`;
+                } else if (type === 'flash') {
+                    return `<span class="segment-color-indicator badge-control">[Flash "${escapeHtml(s.text)}" ${s.duration}s${s.scroll_off ? ' scroll' : ''}]</span>`;
+                }
+                return `<span class="segment-color-indicator" style="color: ${COLOR_CSS[s.color] || '#fff'}; border: 1px solid ${COLOR_CSS[s.color] || '#fff'}44">${escapeHtml(s.text)} <small>(${s.color})</small></span>`;
+            }).join('');
+        }
+
         async function loadTexts() {
             try {
                 const response = await fetch('/texts');
@@ -395,9 +621,8 @@
 
             textList.innerHTML = texts.map(t => `
                 <div class="text-item ${t.active ? 'active' : 'inactive'}">
-                    <div class="text-content">${escapeHtml(t.content)}</div>
+                    <div class="text-content">${renderSegmentBadges(t.segments)}</div>
                     <div class="text-meta">
-                        <span class="badge badge-color">${t.color}</span>
                         <span class="badge badge-color">BG: ${t.background}</span>
                         <span class="badge badge-color">${t.font}</span>
                         <span class="badge badge-color">Speed: ${t.speed}</span>
@@ -412,17 +637,15 @@
             `).join('');
         }
 
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-
         textForm.addEventListener('submit', async (e) => {
             e.preventDefault();
+            const segments = getSegments();
+            if (segments.length === 0) {
+                showStatus(textStatus, false, 'Please add at least one segment');
+                return;
+            }
             const data = {
-                content: document.getElementById('content').value,
-                color: document.getElementById('textColor').value,
+                segments: segments,
                 background: document.getElementById('textBackground').value,
                 font: document.getElementById('textFont').value,
                 speed: parseInt(document.getElementById('textSpeed').value),
@@ -458,6 +681,7 @@
             submitBtn.textContent = 'Add Text';
             cancelBtn.style.display = 'none';
             document.getElementById('textSpeedValue').textContent = '32';
+            setSegments([]);
         }
 
         cancelBtn.addEventListener('click', resetForm);
@@ -469,8 +693,7 @@
                 if (response.ok) {
                     const t = data.text;
                     editId.value = t.id;
-                    document.getElementById('content').value = t.content;
-                    document.getElementById('textColor').value = t.color;
+                    setSegments(t.segments || [{ text: t.content, color: 'WHITE' }]);
                     document.getElementById('textBackground').value = t.background;
                     document.getElementById('textFont').value = t.font;
                     document.getElementById('textSpeed').value = t.speed;
@@ -478,7 +701,8 @@
                     document.getElementById('textActive').checked = t.active;
                     submitBtn.textContent = 'Update Text';
                     cancelBtn.style.display = 'block';
-                    document.getElementById('content').focus();
+                    const firstInput = segmentsContainer.querySelector('input');
+                    if (firstInput) firstInput.focus();
                 }
             } catch (err) {
                 showStatus(textStatus, false, 'Failed to load text');

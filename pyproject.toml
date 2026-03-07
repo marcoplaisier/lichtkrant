@@ -5,13 +5,15 @@ description = "Raspberry Pi controller for LED scrolling display"
 requires-python = ">=3.11"
 dependencies = [
     "flask>=3.0.0",
-    "spidev>=3.6",
-    "rpi-gpio>=0.7.1",
     "qrcode[pil]>=7.4",
     "pyyaml>=6.0",
 ]
 
 [project.optional-dependencies]
+hw = [
+    "spidev>=3.6",
+    "rpi-lgpio>=0.6",
+]
 dev = [
     "pytest>=8.0.0",
     "ruff>=0.4.0",

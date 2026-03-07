@@ -39,7 +39,7 @@ You should see `/dev/spidev0.0` (and possibly `/dev/spidev0.1`).
 
 ```bash
 sudo apt update
-sudo apt install -y python3-dev git
+sudo apt install -y python3-dev git swig liblgpio-dev
 ```
 
 ### 3. Install uv
@@ -54,7 +54,7 @@ source ~/.bashrc
 ```bash
 git clone <repository-url> ~/lichtkrant
 cd ~/lichtkrant
-uv sync
+uv sync --extra hw
 ```
 
 ### 5. Configure
@@ -163,18 +163,18 @@ The REQUEST pin is active-high by default (configurable in `config.yaml`).
 When the WiFi access point is active, a captive portal is set up automatically so that connecting devices see a "Sign in to network" popup that opens the web UI. This works by:
 
 1. **DNS interception** — a dnsmasq config in `/etc/NetworkManager/dnsmasq-shared.d/` resolves all DNS queries to the Pi's gateway IP
-2. **Port 80 redirect** — an iptables rule redirects port 80 to the web server port (8080) since captive portal probes always use port 80
+2. **Port 80 redirect** — an nftables rule redirects port 80 to the web server port (8080) since captive portal probes always use port 80
 3. **Host-based redirect** — Flask checks the `Host` header and redirects foreign hosts (e.g. `captive.apple.com`) to the portal URL
 
 This is all handled automatically when running with WiFi enabled. Use `--no-wifi` to disable both the access point and captive portal.
 
-**Prerequisites:** NetworkManager must be installed and managing the WiFi interface. The service must run as root for iptables and dnsmasq configuration.
+**Prerequisites:** NetworkManager and nftables must be installed. The service must run as root for nftables and dnsmasq configuration.
 
 ## Development
 
 ```bash
 # Install with dev dependencies
-uv sync --group dev
+uv sync --extra dev
 
 # Run tests
 uv run pytest

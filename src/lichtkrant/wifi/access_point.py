@@ -141,23 +141,44 @@ class AccessPoint:
             capture_output=True,
         )
 
-        # Redirect port 80 → web_port on the AP interface
+        # Redirect port 80 → web_port on the AP interface using nftables
         subprocess.run(
             [
-                "iptables",
-                "-t",
-                "nat",
-                "-A",
-                "PREROUTING",
-                "-i",
+                "nft",
+                "add",
+                "table",
+                "ip",
+                "lichtkrant",
+            ],
+            capture_output=True,
+        )
+        subprocess.run(
+            [
+                "nft",
+                "add",
+                "chain",
+                "ip",
+                "lichtkrant",
+                "prerouting",
+                "{ type nat hook prerouting priority -100; }",
+            ],
+            capture_output=True,
+        )
+        subprocess.run(
+            [
+                "nft",
+                "add",
+                "rule",
+                "ip",
+                "lichtkrant",
+                "prerouting",
+                "iifname",
                 "wlan0",
-                "-p",
                 "tcp",
-                "--dport",
+                "dport",
                 "80",
-                "-j",
-                "REDIRECT",
-                "--to-port",
+                "redirect",
+                "to",
                 str(web_port),
             ],
             capture_output=True,
@@ -168,8 +189,6 @@ class AccessPoint:
 
     def _teardown_captive_portal(self) -> None:
         """Remove DNS interception and port 80 redirect."""
-        web_port = self.config.web.port
-
         # Remove dnsmasq config
         try:
             if DNSMASQ_CONF_PATH.exists():
@@ -178,25 +197,9 @@ class AccessPoint:
         except OSError as e:
             logger.warning("Could not remove dnsmasq config: %s", e)
 
-        # Remove iptables rule
+        # Remove nftables table (removes all rules within it)
         subprocess.run(
-            [
-                "iptables",
-                "-t",
-                "nat",
-                "-D",
-                "PREROUTING",
-                "-i",
-                "wlan0",
-                "-p",
-                "tcp",
-                "--dport",
-                "80",
-                "-j",
-                "REDIRECT",
-                "--to-port",
-                str(web_port),
-            ],
+            ["nft", "delete", "table", "ip", "lichtkrant"],
             capture_output=True,
         )
         logger.info("Captive portal teardown complete")

@@ -72,7 +72,17 @@ class TextRepository:
     def _parse_segments(segments_json: str) -> list[TextSegment]:
         """Parse JSON segments string into TextSegment list."""
         raw = json.loads(segments_json)
-        return [TextSegment(text=s["text"], color=s["color"]) for s in raw]
+        return [
+            TextSegment(
+                text=s.get("text", ""),
+                color=s.get("color", "WHITE"),
+                type=s.get("type", "text"),
+                duration=s.get("duration", 0),
+                times=s.get("times", 0),
+                scroll_off=s.get("scroll_off", False),
+            )
+            for s in raw
+        ]
 
     @staticmethod
     def _serialize_segments(segments: list[TextSegment]) -> str:

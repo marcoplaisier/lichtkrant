@@ -98,3 +98,62 @@ class TestMessageBuilder:
         assert msg[11] == Color.BLUE
         assert msg[12] == ord("o")
         assert msg[13] == Color.BLUE
+
+    def test_build_message_with_control_segments(self) -> None:
+        """Test building a message with mixed text and control segments.
+
+        Simulates what the dispatcher does: text + pause + blink + flash.
+        """
+        from lichtkrant.db.models import Text, TextSegment
+        from lichtkrant.protocol.constants import BackgroundColor
+
+        text = Text(
+            id=1,
+            segments=[
+                TextSegment(text="Hi", color="WHITE"),
+                TextSegment(type="pause", duration=3),
+                TextSegment(type="fast_blink", times=2),
+                TextSegment(
+                    type="flash", text="GO", color="RED",
+                    duration=5, scroll_off=True,
+                ),
+            ],
+            background="NONE",
+            font="KONGTEXT",
+            speed=32,
+            active=True,
+        )
+
+        # Build message the same way the dispatcher does
+        builder = MessageBuilder(
+            background=BackgroundColor[text.background],
+            speed=text.speed,
+            font=Font[text.font],
+        )
+        for seg in text.segments:
+            match seg.type:
+                case "pause":
+                    builder.add_pause(seg.duration)
+                case "fast_blink":
+                    builder.add_fast_blink(seg.times)
+                case "slow_blink":
+                    builder.add_slow_blink(seg.times)
+                case "flash":
+                    builder.add_flash(
+                        seg.text, seg.duration, Color[seg.color],
+                        scroll_off=seg.scroll_off,
+                    )
+                case _:
+                    builder.add_text(seg.text, Color[seg.color])
+
+        msg = builder.build()
+
+        # Verify header
+        assert msg[0] == HEADER_START
+        # Verify it built successfully and has content
+        assert len(msg) > 8
+        assert msg[-2:] == TERMINATOR
+
+        # Verify text "Hi" is in the message (first segment)
+        assert msg[6] == ord("H")
+        assert msg[7] == Color.WHITE

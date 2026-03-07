@@ -40,7 +40,22 @@ class TextDispatcher:
             font=Font[text.font],
         )
         for segment in text.segments:
-            builder.add_text(segment.text, Color[segment.color])
+            match segment.type:
+                case "pause":
+                    builder.add_pause(segment.duration)
+                case "fast_blink":
+                    builder.add_fast_blink(segment.times)
+                case "slow_blink":
+                    builder.add_slow_blink(segment.times)
+                case "flash":
+                    builder.add_flash(
+                        segment.text,
+                        segment.duration,
+                        Color[segment.color],
+                        scroll_off=segment.scroll_off,
+                    )
+                case _:
+                    builder.add_text(segment.text, Color[segment.color])
         return builder.build()
 
     def _dispatch_loop(self) -> None:

@@ -115,11 +115,34 @@ def create_app(
         if "segments" in data:
             segments = []
             for seg in data["segments"]:
-                text = seg.get("text", "")
-                if not text:
-                    continue
-                color = seg.get("color", "WHITE").upper()
-                segments.append(TextSegment(text=text, color=color))
+                seg_type = seg.get("type", "text")
+                if seg_type == "text":
+                    text = seg.get("text", "")
+                    if not text:
+                        continue
+                    color = seg.get("color", "WHITE").upper()
+                    segments.append(TextSegment(text=text, color=color))
+                elif seg_type == "pause":
+                    segments.append(TextSegment(
+                        type="pause",
+                        duration=int(seg.get("duration", 1)),
+                    ))
+                elif seg_type in ("fast_blink", "slow_blink"):
+                    segments.append(TextSegment(
+                        type=seg_type,
+                        times=int(seg.get("times", 1)),
+                    ))
+                elif seg_type == "flash":
+                    text = seg.get("text", "")
+                    if not text:
+                        continue
+                    segments.append(TextSegment(
+                        type="flash",
+                        text=text,
+                        color=seg.get("color", "WHITE").upper(),
+                        duration=int(seg.get("duration", 1)),
+                        scroll_off=bool(seg.get("scroll_off", False)),
+                    ))
             return segments
         # Legacy format: single content + color
         content = data.get("content", "")
@@ -135,8 +158,14 @@ def create_app(
             return {"error": "No content provided"}, 400
 
         for seg in segments:
-            if seg.color not in valid_color_names:
+            if seg.type in ("text", "flash") and seg.color not in valid_color_names:
                 return {"error": f"Invalid color: {seg.color}"}, 400
+            if seg.type == "pause" and not 1 <= seg.duration <= 255:
+                return {"error": "Pause duration must be between 1 and 255"}, 400
+            if seg.type in ("fast_blink", "slow_blink") and not 1 <= seg.times <= 255:
+                return {"error": "Blink times must be between 1 and 255"}, 400
+            if seg.type == "flash" and not 1 <= seg.duration <= 255:
+                return {"error": "Flash duration must be between 1 and 255"}, 400
 
         background = data.get("background", "NONE").upper()
         if background not in [c.name for c in BackgroundColor]:

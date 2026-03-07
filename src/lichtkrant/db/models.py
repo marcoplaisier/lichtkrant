@@ -8,14 +8,35 @@ from datetime import datetime
 
 @dataclass
 class TextSegment:
-    """A segment of text with its own color."""
+    """A segment of text with its own color, or a control sequence.
 
-    text: str
+    type can be: "text", "pause", "fast_blink", "slow_blink", "flash"
+    """
+
+    text: str = ""
     color: str = "WHITE"
+    type: str = "text"
+    duration: int = 0  # seconds for pause; hold_seconds for flash
+    times: int = 0  # repeat count for blink
+    scroll_off: bool = False  # flash: scroll off vs instant off
 
     def to_dict(self) -> dict:
         """Convert to dictionary for JSON serialization."""
-        return {"text": self.text, "color": self.color}
+        d: dict = {"type": self.type}
+        match self.type:
+            case "pause":
+                d["duration"] = self.duration
+            case "fast_blink" | "slow_blink":
+                d["times"] = self.times
+            case "flash":
+                d["text"] = self.text
+                d["color"] = self.color
+                d["duration"] = self.duration
+                d["scroll_off"] = self.scroll_off
+            case _:  # "text"
+                d["text"] = self.text
+                d["color"] = self.color
+        return d
 
 
 @dataclass
@@ -32,8 +53,10 @@ class Text:
 
     @property
     def content(self) -> str:
-        """Concatenate all segment texts for display."""
-        return "".join(seg.text for seg in self.segments)
+        """Concatenate text from text and flash segments for display."""
+        return "".join(
+            seg.text for seg in self.segments if seg.type in ("text", "flash")
+        )
 
     def to_dict(self) -> dict:
         """Convert to dictionary for JSON serialization."""

@@ -184,6 +184,103 @@ class TestTextRepository:
             assert texts[0].segments[0].color == "GREEN"
 
 
+    def test_create_pause_segment(self, repository: TextRepository) -> None:
+        """Test creating a text with a pause control segment."""
+        text = Text(
+            id=None,
+            segments=[
+                TextSegment(text="Hello", color="WHITE"),
+                TextSegment(type="pause", duration=5),
+                TextSegment(text="World", color="RED"),
+            ],
+            background="NONE",
+            font="KONGTEXT",
+            speed=32,
+            active=True,
+        )
+        created = repository.create(text)
+        retrieved = repository.get(created.id)
+
+        assert retrieved is not None
+        assert len(retrieved.segments) == 3
+        assert retrieved.segments[1].type == "pause"
+        assert retrieved.segments[1].duration == 5
+
+    def test_create_mixed_segments(self, repository: TextRepository) -> None:
+        """Test creating a text with all segment types."""
+        text = Text(
+            id=None,
+            segments=[
+                TextSegment(text="Intro", color="GREEN"),
+                TextSegment(type="pause", duration=2),
+                TextSegment(type="fast_blink", times=3),
+                TextSegment(type="slow_blink", times=5),
+                TextSegment(
+                    type="flash", text="SALE!", color="RED",
+                    duration=4, scroll_off=True,
+                ),
+            ],
+            background="NONE",
+            font="KONGTEXT",
+            speed=32,
+            active=True,
+        )
+        created = repository.create(text)
+        retrieved = repository.get(created.id)
+
+        assert retrieved is not None
+        assert len(retrieved.segments) == 5
+        assert retrieved.segments[0].type == "text"
+        assert retrieved.segments[1].type == "pause"
+        assert retrieved.segments[1].duration == 2
+        assert retrieved.segments[2].type == "fast_blink"
+        assert retrieved.segments[2].times == 3
+        assert retrieved.segments[3].type == "slow_blink"
+        assert retrieved.segments[3].times == 5
+        assert retrieved.segments[4].type == "flash"
+        assert retrieved.segments[4].text == "SALE!"
+        assert retrieved.segments[4].duration == 4
+        assert retrieved.segments[4].scroll_off is True
+
+    def test_backward_compat_no_type_key(self, repository: TextRepository) -> None:
+        """Test that old JSON without a type key is parsed as 'text'."""
+        import json
+
+        with repository._connect() as conn:
+            # Insert raw JSON without 'type' key (old format)
+            segments_json = json.dumps([{"text": "Legacy", "color": "BLUE"}])
+            conn.execute(
+                "INSERT INTO texts (segments, background, font, speed, active)"
+                " VALUES (?, ?, ?, ?, ?)",
+                (segments_json, "NONE", "KONGTEXT", 32, True),
+            )
+            conn.commit()
+
+        texts = repository.get_all()
+        assert len(texts) == 1
+        assert texts[0].segments[0].type == "text"
+        assert texts[0].segments[0].text == "Legacy"
+        assert texts[0].segments[0].color == "BLUE"
+
+    def test_content_property_skips_control_segments(self) -> None:
+        """Test that Text.content only includes text and flash segments."""
+        text = Text(
+            id=None,
+            segments=[
+                TextSegment(text="Hello ", color="WHITE"),
+                TextSegment(type="pause", duration=2),
+                TextSegment(type="fast_blink", times=3),
+                TextSegment(type="flash", text="SALE", color="RED", duration=1),
+                TextSegment(text=" World", color="WHITE"),
+            ],
+            background="NONE",
+            font="KONGTEXT",
+            speed=32,
+            active=True,
+        )
+        assert text.content == "Hello SALE World"
+
+
 class TestGetNextActive:
     """Tests for the get_next_active cycling logic."""
 

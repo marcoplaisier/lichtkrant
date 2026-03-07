@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from lichtkrant.db import TextRepository
     from lichtkrant.spi import SPIDriver
 
-from lichtkrant.db.models import Text
+from lichtkrant.db.models import Text, TextSegment
 from lichtkrant.protocol import Color, Font, MessageBuilder
 from lichtkrant.protocol.constants import BackgroundColor
 
@@ -26,6 +26,8 @@ def create_app(
     app.config["LICHTKRANT_CONFIG"] = config
     app.config["SPI_DRIVER"] = spi_driver
     app.config["REPOSITORY"] = repository
+
+    valid_color_names = {c.name for c in Color}
 
     @app.route("/")
     def index() -> str:
@@ -108,15 +110,33 @@ def create_app(
 
     # Text CRUD endpoints
 
+    def _extract_segments(data: dict) -> list[TextSegment]:
+        """Extract segments from request data, supporting both formats."""
+        if "segments" in data:
+            segments = []
+            for seg in data["segments"]:
+                text = seg.get("text", "")
+                if not text:
+                    continue
+                color = seg.get("color", "WHITE").upper()
+                segments.append(TextSegment(text=text, color=color))
+            return segments
+        # Legacy format: single content + color
+        content = data.get("content", "")
+        color = data.get("color", "WHITE").upper()
+        if content:
+            return [TextSegment(text=content, color=color)]
+        return []
+
     def _validate_text_data(data: dict) -> tuple[dict | None, int | None]:
         """Validate text data, return (error_dict, status_code) or (None, None)."""
-        content = data.get("content", "")
-        if not content:
+        segments = _extract_segments(data)
+        if not segments:
             return {"error": "No content provided"}, 400
 
-        color = data.get("color", "WHITE").upper()
-        if color not in [c.name for c in Color]:
-            return {"error": f"Invalid color: {color}"}, 400
+        for seg in segments:
+            if seg.color not in valid_color_names:
+                return {"error": f"Invalid color: {seg.color}"}, 400
 
         background = data.get("background", "NONE").upper()
         if background not in [c.name for c in BackgroundColor]:
@@ -158,8 +178,7 @@ def create_app(
 
         text = Text(
             id=None,
-            content=data["content"],
-            color=data.get("color", "WHITE").upper(),
+            segments=_extract_segments(data),
             background=data.get("background", "NONE").upper(),
             font=data.get("font", "KONGTEXT").upper(),
             speed=data.get("speed", 32),
@@ -201,8 +220,7 @@ def create_app(
 
         text = Text(
             id=text_id,
-            content=data["content"],
-            color=data.get("color", "WHITE").upper(),
+            segments=_extract_segments(data),
             background=data.get("background", "NONE").upper(),
             font=data.get("font", "KONGTEXT").upper(),
             speed=data.get("speed", 32),

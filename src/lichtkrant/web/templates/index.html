@@ -183,6 +183,37 @@
             width: 20px;
             height: 20px;
         }
+        .segment-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 8px;
+            align-items: center;
+        }
+        .segment-row input[type="text"] {
+            flex: 1;
+        }
+        .segment-row select {
+            width: 130px;
+            flex-shrink: 0;
+        }
+        .segment-row .btn-remove {
+            padding: 10px 12px;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+        .btn-add-segment {
+            padding: 10px;
+            font-size: 13px;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+        .segment-color-indicator {
+            display: inline-block;
+            padding: 1px 6px;
+            border-radius: 3px;
+            font-size: 11px;
+            margin-right: 2px;
+        }
     </style>
 </head>
 <body>
@@ -198,21 +229,9 @@
             <input type="hidden" id="editId" value="">
 
             <div class="form-group">
-                <label for="content">Message</label>
-                <input type="text" id="content" name="content" placeholder="Enter your message..." maxlength="200" required>
-            </div>
-
-            <div class="form-group">
-                <label for="textColor">Text Color</label>
-                <select id="textColor" name="color">
-                    <option value="WHITE">White</option>
-                    <option value="GREEN">Green</option>
-                    <option value="RED">Red</option>
-                    <option value="BLUE">Blue</option>
-                    <option value="YELLOW">Yellow</option>
-                    <option value="CYAN">Cyan</option>
-                    <option value="MAGENTA">Magenta</option>
-                </select>
+                <label>Text Segments</label>
+                <div id="segmentsContainer"></div>
+                <button type="button" class="btn-add-segment btn-secondary" id="addSegmentBtn">+ Add Color Segment</button>
             </div>
 
             <div class="form-group">
@@ -271,7 +290,8 @@
             <div class="form-group">
                 <label for="color">Text Color</label>
                 <select id="color" name="color">
-                    <option value="WHITE">White</option>
+                    <option value="NONE">None (Black)</option>
+                    <option value="WHITE" selected>White</option>
                     <option value="GREEN">Green</option>
                     <option value="RED">Red</option>
                     <option value="BLUE">Blue</option>
@@ -317,6 +337,22 @@
     </div>
 
     <script>
+        const COLOR_OPTIONS = `
+            <option value="NONE">None (Black)</option>
+            <option value="WHITE" selected>White</option>
+            <option value="GREEN">Green</option>
+            <option value="RED">Red</option>
+            <option value="BLUE">Blue</option>
+            <option value="YELLOW">Yellow</option>
+            <option value="CYAN">Cyan</option>
+            <option value="MAGENTA">Magenta</option>
+        `;
+
+        const COLOR_CSS = {
+            NONE: '#000', GREEN: '#0f0', RED: '#f44', BLUE: '#48f',
+            YELLOW: '#ff0', CYAN: '#0ff', MAGENTA: '#f0f', WHITE: '#fff'
+        };
+
         // Tab switching
         document.querySelectorAll('.tab').forEach(tab => {
             tab.addEventListener('click', () => {
@@ -334,6 +370,57 @@
         document.getElementById('textSpeed').addEventListener('input', (e) => {
             document.getElementById('textSpeedValue').textContent = e.target.value;
         });
+
+        // Segment management
+        const segmentsContainer = document.getElementById('segmentsContainer');
+
+        function addSegmentRow(text = '', color = 'WHITE') {
+            const row = document.createElement('div');
+            row.className = 'segment-row';
+            row.innerHTML = `
+                <input type="text" placeholder="Enter text..." maxlength="200" value="${escapeAttr(text)}">
+                <select>${COLOR_OPTIONS}</select>
+                <button type="button" class="btn btn-small btn-danger btn-remove">X</button>
+            `;
+            row.querySelector('select').value = color;
+            row.querySelector('.btn-remove').addEventListener('click', () => {
+                row.remove();
+                // Ensure at least one segment row
+                if (segmentsContainer.children.length === 0) {
+                    addSegmentRow();
+                }
+            });
+            segmentsContainer.appendChild(row);
+        }
+
+        document.getElementById('addSegmentBtn').addEventListener('click', () => {
+            addSegmentRow();
+        });
+
+        function getSegments() {
+            const rows = segmentsContainer.querySelectorAll('.segment-row');
+            const segments = [];
+            rows.forEach(row => {
+                const text = row.querySelector('input').value;
+                const color = row.querySelector('select').value;
+                if (text) {
+                    segments.push({ text, color });
+                }
+            });
+            return segments;
+        }
+
+        function setSegments(segments) {
+            segmentsContainer.innerHTML = '';
+            if (segments.length === 0) {
+                addSegmentRow();
+            } else {
+                segments.forEach(s => addSegmentRow(s.text, s.color));
+            }
+        }
+
+        // Initialize with one empty segment row
+        addSegmentRow();
 
         // Direct send form
         const messageForm = document.getElementById('messageForm');
@@ -377,6 +464,23 @@
             setTimeout(() => { el.style.display = 'none'; }, 3000);
         }
 
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function escapeAttr(text) {
+            return text.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+
+        function renderSegmentBadges(segments) {
+            if (!segments || segments.length === 0) return '';
+            return segments.map(s =>
+                `<span class="segment-color-indicator" style="color: ${COLOR_CSS[s.color] || '#fff'}; border: 1px solid ${COLOR_CSS[s.color] || '#fff'}44">${escapeHtml(s.text)} <small>(${s.color})</small></span>`
+            ).join('');
+        }
+
         async function loadTexts() {
             try {
                 const response = await fetch('/texts');
@@ -395,9 +499,8 @@
 
             textList.innerHTML = texts.map(t => `
                 <div class="text-item ${t.active ? 'active' : 'inactive'}">
-                    <div class="text-content">${escapeHtml(t.content)}</div>
+                    <div class="text-content">${renderSegmentBadges(t.segments)}</div>
                     <div class="text-meta">
-                        <span class="badge badge-color">${t.color}</span>
                         <span class="badge badge-color">BG: ${t.background}</span>
                         <span class="badge badge-color">${t.font}</span>
                         <span class="badge badge-color">Speed: ${t.speed}</span>
@@ -412,17 +515,15 @@
             `).join('');
         }
 
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-
         textForm.addEventListener('submit', async (e) => {
             e.preventDefault();
+            const segments = getSegments();
+            if (segments.length === 0) {
+                showStatus(textStatus, false, 'Please enter at least one text segment');
+                return;
+            }
             const data = {
-                content: document.getElementById('content').value,
-                color: document.getElementById('textColor').value,
+                segments: segments,
                 background: document.getElementById('textBackground').value,
                 font: document.getElementById('textFont').value,
                 speed: parseInt(document.getElementById('textSpeed').value),
@@ -458,6 +559,7 @@
             submitBtn.textContent = 'Add Text';
             cancelBtn.style.display = 'none';
             document.getElementById('textSpeedValue').textContent = '32';
+            setSegments([]);
         }
 
         cancelBtn.addEventListener('click', resetForm);
@@ -469,8 +571,7 @@
                 if (response.ok) {
                     const t = data.text;
                     editId.value = t.id;
-                    document.getElementById('content').value = t.content;
-                    document.getElementById('textColor').value = t.color;
+                    setSegments(t.segments || [{ text: t.content, color: 'WHITE' }]);
                     document.getElementById('textBackground').value = t.background;
                     document.getElementById('textFont').value = t.font;
                     document.getElementById('textSpeed').value = t.speed;
@@ -478,7 +579,8 @@
                     document.getElementById('textActive').checked = t.active;
                     submitBtn.textContent = 'Update Text';
                     cancelBtn.style.display = 'block';
-                    document.getElementById('content').focus();
+                    const firstInput = segmentsContainer.querySelector('input');
+                    if (firstInput) firstInput.focus();
                 }
             } catch (err) {
                 showStatus(textStatus, false, 'Failed to load text');

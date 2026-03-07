@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from lichtkrant.config import Config
     from lichtkrant.db import TextRepository
+    from lichtkrant.db.models import Text
     from lichtkrant.spi import SPIDriver
 
 from lichtkrant.protocol import Color, Font, MessageBuilder
@@ -31,15 +32,15 @@ class TextDispatcher:
         self._running = False
         self._thread: threading.Thread | None = None
 
-    def _build_message(self, text_id: int, content: str, color: str,
-                       background: str, font: str, speed: int) -> bytes:
-        """Build protocol message from text parameters."""
+    def _build_message(self, text: Text) -> bytes:
+        """Build protocol message from a Text object."""
         builder = MessageBuilder(
-            background=BackgroundColor[background],
-            speed=speed,
-            font=Font[font],
+            background=BackgroundColor[text.background],
+            speed=text.speed,
+            font=Font[text.font],
         )
-        builder.add_text(content, Color[color])
+        for segment in text.segments:
+            builder.add_text(segment.text, Color[segment.color])
         return builder.build()
 
     def _dispatch_loop(self) -> None:
@@ -54,14 +55,7 @@ class TextDispatcher:
 
             # Build the message
             try:
-                message = self._build_message(
-                    text.id,  # type: ignore[arg-type]
-                    text.content,
-                    text.color,
-                    text.background,
-                    text.font,
-                    text.speed,
-                )
+                message = self._build_message(text)
             except (KeyError, ValueError):
                 # Invalid enum values, skip this text
                 self._current_id = text.id

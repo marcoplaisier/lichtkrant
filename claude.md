@@ -30,7 +30,7 @@ Raspberry Pi software to control a "Lichtkrant" (Dutch: light newspaper) - a scr
 
 | Color | Background | Text |
 |-------|------------|------|
-| None/Black | 0x00 | - |
+| None/Black | 0x00 | 0x00 |
 | Green | 0x84 | 0x10 |
 | Red | 0x88 | 0x20 |
 | Blue | 0x8C | 0x30 |
@@ -82,6 +82,24 @@ web:
   host: "0.0.0.0"
   port: 8080
 ```
+
+## Text Segments API
+
+Texts support per-segment colors. The API accepts a `segments` array:
+
+```json
+{
+  "segments": [
+    {"text": "Hello ", "color": "RED"},
+    {"text": "World", "color": "BLUE"}
+  ],
+  "background": "NONE",
+  "font": "KONGTEXT",
+  "speed": 32
+}
+```
+
+Legacy format (`content` + `color` fields) is still accepted for backward compatibility.
 
 ## Constraints
 

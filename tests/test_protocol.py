@@ -72,3 +72,29 @@ class TestMessageBuilder:
         )
         assert isinstance(msg, bytes)
         assert len(msg) > 8  # Header + some content + terminator
+
+    def test_none_color(self) -> None:
+        """Test that NONE (0x00) color is available and encodes correctly."""
+        assert Color.NONE == 0x00
+        builder = MessageBuilder()
+        builder.add_text("A", Color.NONE)
+        msg = builder.build()
+        assert msg[6] == ord("A")
+        assert msg[7] == Color.NONE
+
+    def test_multi_color_text(self) -> None:
+        """Test building a message with multiple color segments."""
+        builder = MessageBuilder()
+        builder.add_text("Hi", Color.RED)
+        builder.add_text("Lo", Color.BLUE)
+        msg = builder.build()
+
+        # 'H' RED 'i' RED 'L' BLUE 'o' BLUE
+        assert msg[6] == ord("H")
+        assert msg[7] == Color.RED
+        assert msg[8] == ord("i")
+        assert msg[9] == Color.RED
+        assert msg[10] == ord("L")
+        assert msg[11] == Color.BLUE
+        assert msg[12] == ord("o")
+        assert msg[13] == Color.BLUE

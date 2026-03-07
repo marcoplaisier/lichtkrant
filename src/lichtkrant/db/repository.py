@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+import json
 import sqlite3
 from datetime import datetime
 from pathlib import Path
 
-from lichtkrant.db.models import Text
+from lichtkrant.db.models import Text, TextSegment
 
 
 class TextRepository:
@@ -23,8 +24,7 @@ class TextRepository:
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS texts (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    content TEXT NOT NULL,
-                    color TEXT NOT NULL DEFAULT 'WHITE',
+                    segments TEXT NOT NULL DEFAULT '[]',
                     background TEXT NOT NULL DEFAULT 'NONE',
                     font TEXT NOT NULL DEFAULT 'KONGTEXT',
                     speed INTEGER NOT NULL DEFAULT 32,
@@ -33,6 +33,33 @@ class TextRepository:
                 )
             """)
             conn.commit()
+            self._migrate(conn)
+
+    def _migrate(self, conn: sqlite3.Connection) -> None:
+        """Migrate from old schema (content+color columns) to segments."""
+        columns = [
+            row[1] for row in conn.execute("PRAGMA table_info(texts)").fetchall()
+        ]
+        if "content" not in columns:
+            return
+
+        # Old schema detected — add segments column if missing
+        if "segments" not in columns:
+            conn.execute(
+                "ALTER TABLE texts ADD COLUMN segments TEXT NOT NULL DEFAULT '[]'"
+            )
+
+        # Convert existing rows
+        rows = conn.execute("SELECT id, content, color FROM texts").fetchall()
+        for row in rows:
+            segments_json = json.dumps(
+                [{"text": row["content"], "color": row["color"]}]
+            )
+            conn.execute(
+                "UPDATE texts SET segments = ? WHERE id = ?",
+                (segments_json, row["id"]),
+            )
+        conn.commit()
 
     def _connect(self) -> sqlite3.Connection:
         """Create a new connection with WAL mode."""
@@ -41,12 +68,22 @@ class TextRepository:
         conn.row_factory = sqlite3.Row
         return conn
 
+    @staticmethod
+    def _parse_segments(segments_json: str) -> list[TextSegment]:
+        """Parse JSON segments string into TextSegment list."""
+        raw = json.loads(segments_json)
+        return [TextSegment(text=s["text"], color=s["color"]) for s in raw]
+
+    @staticmethod
+    def _serialize_segments(segments: list[TextSegment]) -> str:
+        """Serialize TextSegment list to JSON string."""
+        return json.dumps([seg.to_dict() for seg in segments])
+
     def _row_to_text(self, row: sqlite3.Row) -> Text:
         """Convert a database row to a Text object."""
         return Text(
             id=row["id"],
-            content=row["content"],
-            color=row["color"],
+            segments=self._parse_segments(row["segments"]),
             background=row["background"],
             font=row["font"],
             speed=row["speed"],
@@ -59,12 +96,11 @@ class TextRepository:
         with self._connect() as conn:
             cursor = conn.execute(
                 """
-                INSERT INTO texts (content, color, background, font, speed, active)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT INTO texts (segments, background, font, speed, active)
+                VALUES (?, ?, ?, ?, ?)
                 """,
                 (
-                    text.content,
-                    text.color,
+                    self._serialize_segments(text.segments),
                     text.background,
                     text.font,
                     text.speed,
@@ -73,7 +109,6 @@ class TextRepository:
             )
             conn.commit()
             text.id = cursor.lastrowid
-            # Fetch the created_at timestamp
             row = conn.execute(
                 "SELECT * FROM texts WHERE id = ?", (text.id,)
             ).fetchone()
@@ -109,13 +144,12 @@ class TextRepository:
             conn.execute(
                 """
                 UPDATE texts
-                SET content = ?, color = ?, background = ?, font = ?, speed = ?,
+                SET segments = ?, background = ?, font = ?, speed = ?,
                     active = ?
                 WHERE id = ?
                 """,
                 (
-                    text.content,
-                    text.color,
+                    self._serialize_segments(text.segments),
                     text.background,
                     text.font,
                     text.speed,
@@ -146,7 +180,6 @@ class TextRepository:
         """Get the next active text after current_id, wrapping to start."""
         with self._connect() as conn:
             if current_id is not None:
-                # Try to get next active text with ID > current_id
                 row = conn.execute(
                     """
                     SELECT * FROM texts
@@ -159,7 +192,6 @@ class TextRepository:
                 if row:
                     return self._row_to_text(row)
 
-            # Wrap around: get the first active text
             row = conn.execute(
                 """
                 SELECT * FROM texts

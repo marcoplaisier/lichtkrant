@@ -38,6 +38,11 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Run Flask in debug mode",
     )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Log decoded SPI messages instead of sending to hardware",
+    )
     return parser.parse_args()
 
 
@@ -55,7 +60,25 @@ def main() -> int:
     # Initialize SPI if available and not disabled
     spi_driver = None
     dispatcher = None
-    if not args.no_spi:
+    if args.dry_run:
+        import logging
+
+        from lichtkrant.dispatcher import TextDispatcher
+        from lichtkrant.spi.spy import SpySPIDriver
+
+        logging.basicConfig(
+            level=logging.INFO,
+            format="%(message)s",
+        )
+
+        spi_driver = SpySPIDriver(config)
+        spi_driver.open()
+        print("Dry-run mode: SPI messages will be decoded and logged")
+
+        dispatcher = TextDispatcher(config, repository, spi_driver)
+        dispatcher.start()
+        print("Text dispatcher started (dry-run)")
+    elif not args.no_spi:
         try:
             from lichtkrant.dispatcher import TextDispatcher
             from lichtkrant.spi import SPIDriver

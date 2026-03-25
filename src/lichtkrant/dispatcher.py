@@ -14,6 +14,7 @@ if TYPE_CHECKING:
 
 from lichtkrant.protocol import Color, Font, MessageBuilder
 from lichtkrant.protocol.constants import BackgroundColor
+from lichtkrant.templating import render as render_template
 
 
 class TextDispatcher:
@@ -50,13 +51,16 @@ class TextDispatcher:
                     builder.add_slow_blink(segment.times)
                 case "flash":
                     builder.add_flash(
-                        segment.text,
+                        render_template(segment.text),
                         segment.duration,
                         Color[segment.color],
                         scroll_off=segment.scroll_off,
                     )
                 case _:
-                    builder.add_text(segment.text, Color[segment.color])
+                    builder.add_text(
+                        render_template(segment.text),
+                        Color[segment.color],
+                    )
         return builder.build()
 
     def _dispatch_loop(self) -> None:

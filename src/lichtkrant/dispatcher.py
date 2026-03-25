@@ -28,7 +28,8 @@ class TextDispatcher:
         self.config = config
         self.repository = repository
         self.spi_driver = spi_driver
-        self._current_id: int | None = None
+        self._current_position: int | None = None
+        self._current_text_id: int | None = None
         self._running = False
         self._thread: threading.Thread | None = None
 
@@ -61,24 +62,27 @@ class TextDispatcher:
     def _dispatch_loop(self) -> None:
         """Main dispatch loop running in background thread."""
         while self._running:
-            # Get next active text
-            text = self.repository.get_next_active(self._current_id)
-            if text is None:
-                # No active texts, wait and retry
+            result = self.repository.get_next_queue_entry(self._current_position)
+            if result is None:
+                # No queue entries, wait and retry
                 time.sleep(1.0)
                 continue
+
+            entry, text = result
 
             # Build the message
             try:
                 message = self._build_message(text)
             except (KeyError, ValueError):
-                # Invalid enum values, skip this text
-                self._current_id = text.id
+                # Invalid enum values, skip this entry
+                self._current_position = entry.position
+                self._current_text_id = text.id
                 continue
 
             # Wait for REQUEST and send
             if self.spi_driver.send(message):
-                self._current_id = text.id
+                self._current_position = entry.position
+                self._current_text_id = text.id
             else:
                 # Timeout waiting for REQUEST, retry after short delay
                 time.sleep(0.1)
@@ -101,4 +105,4 @@ class TextDispatcher:
     @property
     def current_text_id(self) -> int | None:
         """Return the ID of the currently displayed text."""
-        return self._current_id
+        return self._current_text_id

@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% set active_page = 'dashboard' %}
+
+{% block title %}Lichtkrant - Dashboard{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2 style="margin-top: 0;">Queue Status</h2>
+    <div id="queueStatus">Loading...</div>
+    <div style="display: flex; gap: 10px; margin-top: 15px;">
+        <a href="/texts/" class="btn btn-small btn-info" style="text-decoration: none; text-align: center; flex: 1;">Manage Texts</a>
+        <a href="/queue/" class="btn btn-small" style="text-decoration: none; text-align: center; flex: 1;">Manage Queue</a>
+    </div>
+</div>
+
+<h2>Direct Send</h2>
+<form id="messageForm">
+    <div class="form-group">
+        <label for="text">Message</label>
+        <input type="text" id="text" name="text" placeholder="Enter your message..." maxlength="200" required>
+    </div>
+
+    <div class="form-group">
+        <label for="color">Text Color</label>
+        <select id="color" name="color">
+            <option value="NONE">None (Black)</option>
+            <option value="WHITE" selected>White</option>
+            <option value="GREEN">Green</option>
+            <option value="RED">Red</option>
+            <option value="BLUE">Blue</option>
+            <option value="YELLOW">Yellow</option>
+            <option value="CYAN">Cyan</option>
+            <option value="MAGENTA">Magenta</option>
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label for="background">Background</label>
+        <select id="background" name="background">
+            <option value="NONE">None (Black)</option>
+            <option value="GREEN">Green</option>
+            <option value="RED">Red</option>
+            <option value="BLUE">Blue</option>
+            <option value="YELLOW">Yellow</option>
+            <option value="CYAN">Cyan</option>
+            <option value="MAGENTA">Magenta</option>
+            <option value="WHITE">White</option>
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label for="font">Font</label>
+        <select id="font" name="font">
+            <option value="KONGTEXT">Kongtext</option>
+            <option value="CUSTOM">Custom</option>
+            <option value="MUNRO_SMALL">Munro Small</option>
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label for="speed">Scroll Speed</label>
+        <input type="range" id="speed" name="speed" min="1" max="255" value="32">
+        <div class="speed-value" id="speedValue">32</div>
+    </div>
+
+    <button type="submit" class="btn-full">Send to Display</button>
+</form>
+
+<div id="status" class="status" style="display: none;"></div>
+{% endblock %}
+
+{% block extra_script %}
+    // Load queue status
+    async function loadQueueStatus() {
+        try {
+            const response = await fetch('/api/queue');
+            const data = await response.json();
+            const queue = data.queue || [];
+            const el = document.getElementById('queueStatus');
+            if (queue.length === 0) {
+                el.innerHTML = '<p style="color: #666;">Queue is empty. Add texts to the queue to start playback.</p>';
+            } else {
+                el.innerHTML = `<p><strong>${queue.length}</strong> text${queue.length !== 1 ? 's' : ''} in queue</p>`;
+            }
+        } catch (err) {
+            document.getElementById('queueStatus').innerHTML = '<p style="color: #ff6666;">Failed to load queue status</p>';
+        }
+    }
+    loadQueueStatus();
+
+    // Speed slider
+    document.getElementById('speed').addEventListener('input', (e) => {
+        document.getElementById('speedValue').textContent = e.target.value;
+    });
+
+    // Direct send form
+    document.getElementById('messageForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const status = document.getElementById('status');
+        const data = {
+            text: document.getElementById('text').value,
+            color: document.getElementById('color').value,
+            background: document.getElementById('background').value,
+            font: document.getElementById('font').value,
+            speed: parseInt(document.getElementById('speed').value)
+        };
+
+        try {
+            const response = await fetch('/api/send', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            const result = await response.json();
+            showStatus(status, response.ok, response.ok ? `Sent! (${result.bytes_sent} bytes)` : result.error);
+        } catch (err) {
+            showStatus(status, false, 'Connection error');
+        }
+    });
+{% endblock %}

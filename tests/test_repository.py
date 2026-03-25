@@ -1,5 +1,6 @@
 """Tests for text repository."""
 
+import json
 import sqlite3
 import tempfile
 from pathlib import Path
@@ -18,7 +19,6 @@ def _make_text(content="Hello World", color="WHITE", **kwargs):
         "background": "NONE",
         "font": "KONGTEXT",
         "speed": 32,
-        "active": True,
     }
     defaults.update(kwargs)
     return Text(**defaults)
@@ -43,7 +43,6 @@ class TestTextRepository:
         assert created.id is not None
         assert created.id == 1
         assert created.content == "Hello World"
-        assert created.active is True
         assert created.created_at is not None
 
     def test_get_text(self, repository: TextRepository) -> None:
@@ -69,15 +68,6 @@ class TestTextRepository:
         assert len(all_texts) == 3
         assert all_texts[0].content == "Text 0"
         assert all_texts[2].content == "Text 2"
-
-    def test_get_active(self, repository: TextRepository) -> None:
-        """Test getting only active texts."""
-        for i, active in enumerate([True, False, True]):
-            repository.create(_make_text(f"Text {i}", active=active))
-
-        active_texts = repository.get_active()
-        assert len(active_texts) == 2
-        assert all(t.active for t in active_texts)
 
     def test_update_text(self, repository: TextRepository) -> None:
         """Test updating a text."""
@@ -106,19 +96,6 @@ class TestTextRepository:
         """Test that deleting a non-existent ID returns False."""
         assert repository.delete(999) is False
 
-    def test_set_active(self, repository: TextRepository) -> None:
-        """Test setting active status."""
-        text = _make_text("Test")
-        created = repository.create(text)
-
-        updated = repository.set_active(created.id, False)  # type: ignore[arg-type]
-        assert updated is not None
-        assert updated.active is False
-
-        updated = repository.set_active(created.id, True)  # type: ignore[arg-type]
-        assert updated is not None
-        assert updated.active is True
-
     def test_create_multi_segment_text(self, repository: TextRepository) -> None:
         """Test creating a text with multiple color segments."""
         text = Text(
@@ -130,7 +107,6 @@ class TestTextRepository:
             background="NONE",
             font="KONGTEXT",
             speed=32,
-            active=True,
         )
         created = repository.create(text)
 
@@ -148,12 +124,65 @@ class TestTextRepository:
         assert retrieved.segments[0].color == "RED"
         assert retrieved.segments[1].color == "BLUE"
 
-    def test_migration_from_old_schema(self) -> None:
-        """Test migration from old content+color schema to segments."""
+    def test_migration_from_old_schema_with_active(self) -> None:
+        """Test migration from old schema with active column to new schema + queue."""
         with tempfile.TemporaryDirectory() as tmpdir:
             db_path = Path(tmpdir) / "migrate.db"
 
             # Create old-schema database manually
+            conn = sqlite3.connect(db_path)
+            conn.execute("""
+                CREATE TABLE texts (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    segments TEXT NOT NULL DEFAULT '[]',
+                    background TEXT NOT NULL DEFAULT 'NONE',
+                    font TEXT NOT NULL DEFAULT 'KONGTEXT',
+                    speed INTEGER NOT NULL DEFAULT 32,
+                    active BOOLEAN NOT NULL DEFAULT 1,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            conn.execute(
+                "INSERT INTO texts (segments, active) VALUES (?, ?)",
+                (json.dumps([{"text": "Active text", "color": "WHITE"}]), True),
+            )
+            conn.execute(
+                "INSERT INTO texts (segments, active) VALUES (?, ?)",
+                (json.dumps([{"text": "Inactive text", "color": "RED"}]), False),
+            )
+            conn.execute(
+                "INSERT INTO texts (segments, active) VALUES (?, ?)",
+                (json.dumps([{"text": "Also active", "color": "GREEN"}]), True),
+            )
+            conn.commit()
+            conn.close()
+
+            # Open with new repository — should trigger migration
+            repo = TextRepository(db_path)
+            texts = repo.get_all()
+            assert len(texts) == 3
+
+            # Active column should be gone
+            with repo._connect() as c:
+                columns = [
+                    row[1]
+                    for row in c.execute("PRAGMA table_info(texts)").fetchall()
+                ]
+                assert "active" not in columns
+
+            # Active texts should be in queue
+            queue = repo.get_queue()
+            assert len(queue) == 2
+            queue_text_ids = [text.id for _, text in queue]
+            assert 1 in queue_text_ids  # Active text
+            assert 3 in queue_text_ids  # Also active
+            assert 2 not in queue_text_ids  # Inactive text
+
+    def test_migration_from_content_color_schema(self) -> None:
+        """Test migration from old content+color schema to segments."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = Path(tmpdir) / "migrate.db"
+
             conn = sqlite3.connect(db_path)
             conn.execute("""
                 CREATE TABLE texts (
@@ -174,7 +203,6 @@ class TestTextRepository:
             conn.commit()
             conn.close()
 
-            # Open with new repository — should trigger migration
             repo = TextRepository(db_path)
             texts = repo.get_all()
             assert len(texts) == 1
@@ -182,7 +210,6 @@ class TestTextRepository:
             assert len(texts[0].segments) == 1
             assert texts[0].segments[0].text == "Old text"
             assert texts[0].segments[0].color == "GREEN"
-
 
     def test_create_pause_segment(self, repository: TextRepository) -> None:
         """Test creating a text with a pause control segment."""
@@ -196,7 +223,6 @@ class TestTextRepository:
             background="NONE",
             font="KONGTEXT",
             speed=32,
-            active=True,
         )
         created = repository.create(text)
         retrieved = repository.get(created.id)
@@ -223,7 +249,6 @@ class TestTextRepository:
             background="NONE",
             font="KONGTEXT",
             speed=32,
-            active=True,
         )
         created = repository.create(text)
         retrieved = repository.get(created.id)
@@ -244,15 +269,12 @@ class TestTextRepository:
 
     def test_backward_compat_no_type_key(self, repository: TextRepository) -> None:
         """Test that old JSON without a type key is parsed as 'text'."""
-        import json
-
         with repository._connect() as conn:
-            # Insert raw JSON without 'type' key (old format)
             segments_json = json.dumps([{"text": "Legacy", "color": "BLUE"}])
             conn.execute(
-                "INSERT INTO texts (segments, background, font, speed, active)"
-                " VALUES (?, ?, ?, ?, ?)",
-                (segments_json, "NONE", "KONGTEXT", 32, True),
+                "INSERT INTO texts (segments, background, font, speed)"
+                " VALUES (?, ?, ?, ?)",
+                (segments_json, "NONE", "KONGTEXT", 32),
             )
             conn.commit()
 
@@ -276,61 +298,159 @@ class TestTextRepository:
             background="NONE",
             font="KONGTEXT",
             speed=32,
-            active=True,
         )
         assert text.content == "Hello SALE World"
 
 
-class TestGetNextActive:
-    """Tests for the get_next_active cycling logic."""
+class TestQueue:
+    """Tests for queue CRUD operations."""
 
-    def test_get_next_active_first(self, repository: TextRepository) -> None:
-        """Test getting first active text when no current ID."""
-        for i in range(3):
-            repository.create(_make_text(f"Text {i}"))
+    def test_add_to_queue(self, repository: TextRepository) -> None:
+        """Test adding a text to the queue."""
+        text = repository.create(_make_text("Hello"))
+        entry = repository.add_to_queue(text.id)
 
-        first = repository.get_next_active(None)
-        assert first is not None
-        assert first.id == 1
+        assert entry is not None
+        assert entry.text_id == text.id
+        assert entry.position == 10
 
-    def test_get_next_active_cycles(self, repository: TextRepository) -> None:
-        """Test that get_next_active cycles through texts in order."""
-        for i in range(3):
-            repository.create(_make_text(f"Text {i}"))
+    def test_add_to_queue_nonexistent_text(self, repository: TextRepository) -> None:
+        """Test adding a nonexistent text to queue returns None."""
+        assert repository.add_to_queue(999) is None
 
-        t1 = repository.get_next_active(None)
-        assert t1 is not None and t1.id == 1
+    def test_add_multiple_to_queue(self, repository: TextRepository) -> None:
+        """Test adding multiple texts to queue appends at end."""
+        t1 = repository.create(_make_text("First"))
+        t2 = repository.create(_make_text("Second"))
 
-        t2 = repository.get_next_active(1)
-        assert t2 is not None and t2.id == 2
+        e1 = repository.add_to_queue(t1.id)
+        e2 = repository.add_to_queue(t2.id)
 
-        t3 = repository.get_next_active(2)
-        assert t3 is not None and t3.id == 3
+        assert e1.position < e2.position
 
-        t4 = repository.get_next_active(3)
-        assert t4 is not None and t4.id == 1
+    def test_add_same_text_twice(self, repository: TextRepository) -> None:
+        """Test that the same text can appear in queue multiple times."""
+        text = repository.create(_make_text("Repeat"))
+        e1 = repository.add_to_queue(text.id)
+        e2 = repository.add_to_queue(text.id)
 
-    def test_get_next_active_skips_inactive(self, repository: TextRepository) -> None:
-        """Test that get_next_active skips inactive texts."""
-        for i, active in enumerate([True, False, True]):
-            repository.create(_make_text(f"Text {i}", active=active))
+        assert e1.id != e2.id
+        assert e1.text_id == e2.text_id
+        assert e1.position < e2.position
 
-        t1 = repository.get_next_active(None)
-        assert t1 is not None and t1.id == 1
+    def test_get_queue(self, repository: TextRepository) -> None:
+        """Test getting the full queue with text data."""
+        t1 = repository.create(_make_text("First"))
+        t2 = repository.create(_make_text("Second"))
+        repository.add_to_queue(t1.id)
+        repository.add_to_queue(t2.id)
 
-        t2 = repository.get_next_active(1)
-        assert t2 is not None and t2.id == 3
+        queue = repository.get_queue()
+        assert len(queue) == 2
+        entry1, text1 = queue[0]
+        entry2, text2 = queue[1]
+        assert text1.content == "First"
+        assert text2.content == "Second"
+        assert entry1.position < entry2.position
 
-        t3 = repository.get_next_active(3)
-        assert t3 is not None and t3.id == 1
+    def test_get_queue_empty(self, repository: TextRepository) -> None:
+        """Test getting empty queue."""
+        assert repository.get_queue() == []
 
-    def test_get_next_active_no_active_texts(
-        self, repository: TextRepository
-    ) -> None:
-        """Test get_next_active returns None when no active texts."""
-        repository.create(_make_text("Inactive", active=False))
-        assert repository.get_next_active(None) is None
+    def test_remove_from_queue(self, repository: TextRepository) -> None:
+        """Test removing a queue entry."""
+        text = repository.create(_make_text("Hello"))
+        entry = repository.add_to_queue(text.id)
 
-    def test_get_next_active_empty_db(self, repository: TextRepository) -> None:
-        """Test get_next_active returns None on empty database."""
-        assert repository.get_next_active(None) is None
+        assert repository.remove_from_queue(entry.id) is True
+        assert repository.get_queue() == []
+
+    def test_remove_nonexistent_from_queue(self, repository: TextRepository) -> None:
+        """Test removing a nonexistent queue entry."""
+        assert repository.remove_from_queue(999) is False
+
+    def test_reorder_queue(self, repository: TextRepository) -> None:
+        """Test reordering queue entries."""
+        t1 = repository.create(_make_text("First"))
+        t2 = repository.create(_make_text("Second"))
+        e1 = repository.add_to_queue(t1.id)
+        e2 = repository.add_to_queue(t2.id)
+
+        # Swap positions
+        repository.reorder_queue([
+            {"id": e1.id, "position": 20},
+            {"id": e2.id, "position": 10},
+        ])
+
+        queue = repository.get_queue()
+        assert len(queue) == 2
+        assert queue[0][1].content == "Second"
+        assert queue[1][1].content == "First"
+
+    def test_delete_text_cascades_to_queue(self, repository: TextRepository) -> None:
+        """Test that deleting a text removes its queue entries."""
+        text = repository.create(_make_text("Will delete"))
+        repository.add_to_queue(text.id)
+        repository.add_to_queue(text.id)
+
+        assert len(repository.get_queue()) == 2
+        repository.delete(text.id)
+        assert len(repository.get_queue()) == 0
+
+
+class TestGetNextQueueEntry:
+    """Tests for the get_next_queue_entry cycling logic."""
+
+    def test_get_next_first(self, repository: TextRepository) -> None:
+        """Test getting first queue entry when no current position."""
+        t1 = repository.create(_make_text("First"))
+        repository.add_to_queue(t1.id)
+
+        result = repository.get_next_queue_entry(None)
+        assert result is not None
+        entry, text = result
+        assert text.content == "First"
+
+    def test_get_next_cycles(self, repository: TextRepository) -> None:
+        """Test that get_next_queue_entry cycles through entries."""
+        t1 = repository.create(_make_text("First"))
+        t2 = repository.create(_make_text("Second"))
+        t3 = repository.create(_make_text("Third"))
+        repository.add_to_queue(t1.id)
+        repository.add_to_queue(t2.id)
+        repository.add_to_queue(t3.id)
+
+        r1 = repository.get_next_queue_entry(None)
+        assert r1 is not None
+        assert r1[1].content == "First"
+
+        r2 = repository.get_next_queue_entry(r1[0].position)
+        assert r2 is not None
+        assert r2[1].content == "Second"
+
+        r3 = repository.get_next_queue_entry(r2[0].position)
+        assert r3 is not None
+        assert r3[1].content == "Third"
+
+        # Wraps around
+        r4 = repository.get_next_queue_entry(r3[0].position)
+        assert r4 is not None
+        assert r4[1].content == "First"
+
+    def test_get_next_empty_queue(self, repository: TextRepository) -> None:
+        """Test get_next_queue_entry returns None on empty queue."""
+        assert repository.get_next_queue_entry(None) is None
+
+    def test_get_next_single_entry(self, repository: TextRepository) -> None:
+        """Test cycling with a single queue entry."""
+        text = repository.create(_make_text("Only one"))
+        repository.add_to_queue(text.id)
+
+        r1 = repository.get_next_queue_entry(None)
+        assert r1 is not None
+        assert r1[1].content == "Only one"
+
+        # Wraps to same entry
+        r2 = repository.get_next_queue_entry(r1[0].position)
+        assert r2 is not None
+        assert r2[1].content == "Only one"

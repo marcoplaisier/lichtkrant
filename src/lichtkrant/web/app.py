@@ -38,12 +38,26 @@ def create_app(
             if host not in ("localhost", "127.0.0.1", portal_ip):
                 return redirect(f"http://{portal_ip}:{config.web.port}/", code=302)
 
-    @app.route("/")
-    def index() -> str:
-        """Main page with message input form."""
-        return render_template("index.html")
+    # --- Page routes ---
 
-    @app.route("/send", methods=["POST"])
+    @app.route("/")
+    def dashboard() -> str:
+        """Dashboard page with queue status and direct send."""
+        return render_template("dashboard.html")
+
+    @app.route("/texts/")
+    def texts_page() -> str:
+        """Text management page."""
+        return render_template("texts.html")
+
+    @app.route("/queue/")
+    def queue_page() -> str:
+        """Queue management page."""
+        return render_template("queue.html")
+
+    # --- Direct send ---
+
+    @app.route("/api/send", methods=["POST"])
     def send_message() -> tuple[dict, int]:
         """Send a message to the display."""
         data = request.get_json()
@@ -54,7 +68,6 @@ def create_app(
         if not text:
             return {"error": "No text provided"}, 400
 
-        # Parse options
         color_name = data.get("color", "WHITE").upper()
         bg_name = data.get("background", "NONE").upper()
         font_name = data.get("font", "KONGTEXT").upper()
@@ -78,7 +91,6 @@ def create_app(
         if not 1 <= speed <= 255:
             return {"error": "Speed must be between 1 and 255"}, 400
 
-        # Build message
         try:
             builder = MessageBuilder(background=background, speed=speed, font=font)
             builder.add_text(text, color)
@@ -86,13 +98,18 @@ def create_app(
         except ValueError as e:
             return {"error": str(e)}, 400
 
-        # Send via SPI if driver available
         driver = app.config.get("SPI_DRIVER")
         if driver:
             if not driver.send(message):
                 return {"error": "Display not ready (timeout waiting for REQUEST)"}, 503
 
         return {"success": True, "bytes_sent": len(message)}, 200
+
+    # Legacy redirect for old /send endpoint
+    @app.route("/send", methods=["POST"])
+    def send_message_legacy() -> tuple[dict, int]:
+        """Legacy redirect for direct send."""
+        return send_message()
 
     @app.route("/colors")
     def get_colors() -> dict:
@@ -112,12 +129,12 @@ def create_app(
         """Generate the captive portal URL for QR code."""
         host = config.web.host
         if host == "0.0.0.0":
-            host = "192.168.4.1"  # Default AP gateway
+            host = "192.168.4.1"
         port = config.web.port
         url = f"http://{host}:{port}/"
         return {"url": url}
 
-    # Text CRUD endpoints
+    # --- Text CRUD API ---
 
     def _extract_segments(data: dict) -> list[TextSegment]:
         """Extract segments from request data, supporting both formats."""
@@ -190,8 +207,8 @@ def create_app(
 
         return None, None
 
-    @app.route("/texts", methods=["GET"])
-    def list_texts() -> tuple[dict, int]:
+    @app.route("/api/texts", methods=["GET"])
+    def api_list_texts() -> tuple[dict, int]:
         """List all texts."""
         repo = app.config.get("REPOSITORY")
         if not repo:
@@ -199,8 +216,14 @@ def create_app(
         texts = repo.get_all()
         return {"texts": [t.to_dict() for t in texts]}, 200
 
-    @app.route("/texts", methods=["POST"])
-    def create_text() -> tuple[dict, int]:
+    # Legacy endpoint
+    @app.route("/texts", methods=["GET"])
+    def list_texts() -> tuple[dict, int]:
+        """Legacy: list all texts (JSON)."""
+        return api_list_texts()
+
+    @app.route("/api/texts", methods=["POST"])
+    def api_create_text() -> tuple[dict, int]:
         """Create a new text."""
         repo = app.config.get("REPOSITORY")
         if not repo:
@@ -220,13 +243,18 @@ def create_app(
             background=data.get("background", "NONE").upper(),
             font=data.get("font", "KONGTEXT").upper(),
             speed=data.get("speed", 32),
-            active=data.get("active", True),
         )
         created = repo.create(text)
         return {"text": created.to_dict()}, 201
 
-    @app.route("/texts/<int:text_id>", methods=["GET"])
-    def get_text(text_id: int) -> tuple[dict, int]:
+    # Legacy endpoint
+    @app.route("/texts", methods=["POST"])
+    def create_text() -> tuple[dict, int]:
+        """Legacy: create a text."""
+        return api_create_text()
+
+    @app.route("/api/texts/<int:text_id>", methods=["GET"])
+    def api_get_text(text_id: int) -> tuple[dict, int]:
         """Get a single text."""
         repo = app.config.get("REPOSITORY")
         if not repo:
@@ -237,8 +265,12 @@ def create_app(
             return {"error": "Text not found"}, 404
         return {"text": text.to_dict()}, 200
 
-    @app.route("/texts/<int:text_id>", methods=["PUT"])
-    def update_text(text_id: int) -> tuple[dict, int]:
+    @app.route("/texts/<int:text_id>", methods=["GET"])
+    def get_text(text_id: int) -> tuple[dict, int]:
+        return api_get_text(text_id)
+
+    @app.route("/api/texts/<int:text_id>", methods=["PUT"])
+    def api_update_text(text_id: int) -> tuple[dict, int]:
         """Update a text."""
         repo = app.config.get("REPOSITORY")
         if not repo:
@@ -262,15 +294,18 @@ def create_app(
             background=data.get("background", "NONE").upper(),
             font=data.get("font", "KONGTEXT").upper(),
             speed=data.get("speed", 32),
-            active=data.get("active", existing.active),
         )
         updated = repo.update(text)
         if not updated:
             return {"error": "Failed to update text"}, 500
         return {"text": updated.to_dict()}, 200
 
-    @app.route("/texts/<int:text_id>", methods=["DELETE"])
-    def delete_text(text_id: int) -> tuple[dict, int]:
+    @app.route("/texts/<int:text_id>", methods=["PUT"])
+    def update_text(text_id: int) -> tuple[dict, int]:
+        return api_update_text(text_id)
+
+    @app.route("/api/texts/<int:text_id>", methods=["DELETE"])
+    def api_delete_text(text_id: int) -> tuple[dict, int]:
         """Delete a text."""
         repo = app.config.get("REPOSITORY")
         if not repo:
@@ -280,27 +315,74 @@ def create_app(
             return {"error": "Text not found"}, 404
         return {"success": True}, 200
 
-    @app.route("/texts/<int:text_id>/active", methods=["PATCH"])
-    def toggle_text_active(text_id: int) -> tuple[dict, int]:
-        """Toggle or set the active status of a text."""
+    @app.route("/texts/<int:text_id>", methods=["DELETE"])
+    def delete_text(text_id: int) -> tuple[dict, int]:
+        return api_delete_text(text_id)
+
+    # --- Queue API ---
+
+    @app.route("/api/queue", methods=["GET"])
+    def api_get_queue() -> tuple[dict, int]:
+        """Get the display queue with embedded text data."""
         repo = app.config.get("REPOSITORY")
         if not repo:
             return {"error": "Database not configured"}, 503
 
-        existing = repo.get(text_id)
-        if not existing:
+        queue = repo.get_queue()
+        entries = []
+        for entry, text in queue:
+            d = entry.to_dict()
+            d["text"] = text.to_dict()
+            entries.append(d)
+        return {"queue": entries}, 200
+
+    @app.route("/api/queue", methods=["POST"])
+    def api_add_to_queue() -> tuple[dict, int]:
+        """Add a text to the queue."""
+        repo = app.config.get("REPOSITORY")
+        if not repo:
+            return {"error": "Database not configured"}, 503
+
+        data = request.get_json()
+        if not data or "text_id" not in data:
+            return {"error": "text_id is required"}, 400
+
+        entry = repo.add_to_queue(data["text_id"])
+        if not entry:
             return {"error": "Text not found"}, 404
+        return {"entry": entry.to_dict()}, 201
 
-        data = request.get_json() or {}
-        # If 'active' provided, use it; otherwise toggle
-        if "active" in data:
-            new_active = bool(data["active"])
-        else:
-            new_active = not existing.active
+    @app.route("/api/queue", methods=["PUT"])
+    def api_reorder_queue() -> tuple[dict, int]:
+        """Bulk reorder queue entries."""
+        repo = app.config.get("REPOSITORY")
+        if not repo:
+            return {"error": "Database not configured"}, 503
 
-        updated = repo.set_active(text_id, new_active)
-        if not updated:
-            return {"error": "Failed to update text"}, 500
-        return {"text": updated.to_dict()}, 200
+        data = request.get_json()
+        if not data or "entries" not in data:
+            return {"error": "entries array is required"}, 400
+
+        entries = data["entries"]
+        if not isinstance(entries, list):
+            return {"error": "entries must be an array"}, 400
+
+        for entry in entries:
+            if "id" not in entry or "position" not in entry:
+                return {"error": "Each entry must have id and position"}, 400
+
+        repo.reorder_queue(entries)
+        return {"success": True}, 200
+
+    @app.route("/api/queue/<int:entry_id>", methods=["DELETE"])
+    def api_remove_from_queue(entry_id: int) -> tuple[dict, int]:
+        """Remove a queue entry."""
+        repo = app.config.get("REPOSITORY")
+        if not repo:
+            return {"error": "Database not configured"}, 503
+
+        if not repo.remove_from_queue(entry_id):
+            return {"error": "Queue entry not found"}, 404
+        return {"success": True}, 200
 
     return app

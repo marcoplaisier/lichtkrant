@@ -1,0 +1,349 @@
+{% extends "base.html" %}
+{% set active_page = 'queue' %}
+
+{% block title %}Lichtkrant - Queue{% endblock %}
+
+{% block extra_style %}
+    .queue-layout {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+    }
+    @media (max-width: 600px) {
+        .queue-layout {
+            grid-template-columns: 1fr;
+        }
+    }
+    .panel {
+        background: #16213e;
+        border-radius: 8px;
+        padding: 15px;
+        min-height: 200px;
+    }
+    .panel h3 {
+        margin-top: 0;
+        color: #aaa;
+        font-size: 14px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    .available-item, .queue-item {
+        background: #1a1a2e;
+        border: 2px solid #333;
+        border-radius: 6px;
+        padding: 10px;
+        margin-bottom: 8px;
+        cursor: grab;
+        transition: border-color 0.2s, opacity 0.2s;
+    }
+    .available-item:hover, .queue-item:hover {
+        border-color: #00ff88;
+    }
+    .available-item.dragging, .queue-item.dragging {
+        opacity: 0.4;
+    }
+    .queue-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .queue-item .queue-item-content {
+        flex: 1;
+        min-width: 0;
+    }
+    .queue-item .queue-item-pos {
+        color: #9ca3af;
+        font-size: 12px;
+        font-family: monospace;
+        flex-shrink: 0;
+    }
+    .queue-item .btn-remove-queue {
+        padding: 4px 8px;
+        font-size: 12px;
+        flex-shrink: 0;
+    }
+    .item-title {
+        font-size: 13px;
+        word-break: break-word;
+    }
+    .item-meta {
+        font-size: 11px;
+        color: #9ca3af;
+        margin-top: 4px;
+    }
+    .drop-zone {
+        border: 2px dashed #333;
+        border-radius: 6px;
+        padding: 20px;
+        text-align: center;
+        color: #9ca3af;
+        transition: border-color 0.2s, background 0.2s;
+    }
+    .drop-zone.drag-over {
+        border-color: #00ff88;
+        background: #00ff8811;
+    }
+    .drag-handle {
+        cursor: grab;
+        color: #9ca3af;
+        font-size: 16px;
+        flex-shrink: 0;
+        user-select: none;
+    }
+{% endblock %}
+
+{% block content %}
+<div class="queue-layout">
+    <div class="panel">
+        <h3>Available Texts</h3>
+        <div id="availableTexts">
+            <div class="empty-state" style="padding: 20px;">Loading...</div>
+        </div>
+    </div>
+
+    <div class="panel">
+        <h3>Display Queue</h3>
+        <div id="queueList">
+            <div class="empty-state" style="padding: 20px;">Loading...</div>
+        </div>
+        <div id="dropZone" class="drop-zone" style="display: none;">
+            Drop text here to add to queue
+        </div>
+    </div>
+</div>
+
+<div id="queueStatus" class="status" style="display: none;"></div>
+{% endblock %}
+
+{% block extra_script %}
+    const availableTexts = document.getElementById('availableTexts');
+    const queueList = document.getElementById('queueList');
+    const dropZone = document.getElementById('dropZone');
+    const queueStatus = document.getElementById('queueStatus');
+
+    let draggedTextId = null;
+    let draggedQueueEntryId = null;
+    let draggedElement = null;
+
+    // Load available texts
+    async function loadAvailableTexts() {
+        try {
+            const response = await fetch('/api/texts');
+            const data = await response.json();
+            renderAvailableTexts(data.texts || []);
+        } catch (err) {
+            availableTexts.innerHTML = '<div class="empty-state" style="padding: 20px;">Failed to load</div>';
+        }
+    }
+
+    function renderAvailableTexts(texts) {
+        if (texts.length === 0) {
+            availableTexts.innerHTML = '<div class="empty-state" style="padding: 20px;">No texts. <a href="/texts/" style="color: #00ff88;">Create one</a></div>';
+            return;
+        }
+
+        availableTexts.innerHTML = texts.map(t => `
+            <div class="available-item" draggable="true" data-text-id="${t.id}">
+                <div class="item-title">${renderSegmentBadges(t.segments)}</div>
+                <div class="item-meta">#${t.id} | ${t.font} | Speed ${t.speed}</div>
+            </div>
+        `).join('');
+
+        // Attach drag events
+        availableTexts.querySelectorAll('.available-item').forEach(item => {
+            item.addEventListener('dragstart', (e) => {
+                draggedTextId = parseInt(item.dataset.textId);
+                draggedQueueEntryId = null;
+                draggedElement = item;
+                item.classList.add('dragging');
+                e.dataTransfer.effectAllowed = 'copy';
+                e.dataTransfer.setData('text/plain', draggedTextId);
+            });
+            item.addEventListener('dragend', () => {
+                item.classList.remove('dragging');
+                draggedTextId = null;
+                draggedElement = null;
+            });
+        });
+    }
+
+    // Load queue
+    async function loadQueue() {
+        try {
+            const response = await fetch('/api/queue');
+            const data = await response.json();
+            renderQueue(data.queue || []);
+        } catch (err) {
+            queueList.innerHTML = '<div class="empty-state" style="padding: 20px;">Failed to load</div>';
+        }
+    }
+
+    function renderQueue(queue) {
+        dropZone.style.display = 'block';
+
+        if (queue.length === 0) {
+            queueList.innerHTML = '<div class="empty-state" style="padding: 20px;">Queue is empty. Drag texts here!</div>';
+            return;
+        }
+
+        queueList.innerHTML = queue.map((entry, idx) => `
+            <div class="queue-item" draggable="true" data-entry-id="${entry.id}" data-position="${entry.position}">
+                <span class="drag-handle">::</span>
+                <div class="queue-item-content">
+                    <div class="item-title">${renderSegmentBadges(entry.text.segments)}</div>
+                    <div class="item-meta">#${entry.text.id} | ${entry.text.font} | Speed ${entry.text.speed}</div>
+                </div>
+                <button class="btn btn-small btn-danger btn-remove-queue" onclick="removeFromQueue(${entry.id})">X</button>
+            </div>
+        `).join('');
+
+        // Attach drag events for reordering
+        queueList.querySelectorAll('.queue-item').forEach(item => {
+            item.addEventListener('dragstart', (e) => {
+                draggedQueueEntryId = parseInt(item.dataset.entryId);
+                draggedTextId = null;
+                draggedElement = item;
+                item.classList.add('dragging');
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/plain', draggedQueueEntryId);
+            });
+            item.addEventListener('dragend', () => {
+                item.classList.remove('dragging');
+                draggedQueueEntryId = null;
+                draggedElement = null;
+                clearDropIndicators();
+            });
+            item.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                if (draggedQueueEntryId !== null) {
+                    e.dataTransfer.dropEffect = 'move';
+                    clearDropIndicators();
+                    const rect = item.getBoundingClientRect();
+                    const midY = rect.top + rect.height / 2;
+                    if (e.clientY < midY) {
+                        item.style.borderTop = '2px solid #00ff88';
+                    } else {
+                        item.style.borderBottom = '2px solid #00ff88';
+                    }
+                }
+            });
+            item.addEventListener('dragleave', () => {
+                item.style.borderTop = '';
+                item.style.borderBottom = '';
+            });
+            item.addEventListener('drop', async (e) => {
+                e.preventDefault();
+                clearDropIndicators();
+
+                if (draggedQueueEntryId !== null && draggedElement !== item) {
+                    // Reorder: compute new positions
+                    const items = Array.from(queueList.querySelectorAll('.queue-item'));
+                    const fromIdx = items.indexOf(draggedElement);
+                    const toIdx = items.indexOf(item);
+                    const rect = item.getBoundingClientRect();
+                    const midY = rect.top + rect.height / 2;
+                    let insertIdx = e.clientY < midY ? toIdx : toIdx + 1;
+
+                    // Rearrange in DOM order
+                    items.splice(fromIdx, 1);
+                    if (insertIdx > fromIdx) insertIdx--;
+                    items.splice(insertIdx, 0, draggedElement);
+
+                    // Build new position list
+                    const entries = items.map((el, i) => ({
+                        id: parseInt(el.dataset.entryId),
+                        position: (i + 1) * 10,
+                    }));
+
+                    try {
+                        await fetch('/api/queue', {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ entries }),
+                        });
+                        loadQueue();
+                    } catch (err) {
+                        showStatus(queueStatus, false, 'Failed to reorder');
+                    }
+                }
+            });
+        });
+    }
+
+    function clearDropIndicators() {
+        queueList.querySelectorAll('.queue-item').forEach(item => {
+            item.style.borderTop = '';
+            item.style.borderBottom = '';
+        });
+    }
+
+    // Drop zone for adding from available texts
+    dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        if (draggedTextId !== null) {
+            e.dataTransfer.dropEffect = 'copy';
+            dropZone.classList.add('drag-over');
+        }
+    });
+    dropZone.addEventListener('dragleave', () => {
+        dropZone.classList.remove('drag-over');
+    });
+    dropZone.addEventListener('drop', async (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('drag-over');
+        if (draggedTextId !== null) {
+            await addToQueue(draggedTextId);
+        }
+    });
+
+    // Also allow dropping on the queue list area itself
+    queueList.addEventListener('dragover', (e) => {
+        if (draggedTextId !== null) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'copy';
+        }
+    });
+    queueList.addEventListener('drop', async (e) => {
+        if (draggedTextId !== null) {
+            e.preventDefault();
+            await addToQueue(draggedTextId);
+        }
+    });
+
+    async function addToQueue(textId) {
+        try {
+            const response = await fetch('/api/queue', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text_id: textId }),
+            });
+            if (response.ok) {
+                showStatus(queueStatus, true, 'Added to queue!');
+                loadQueue();
+            } else {
+                const result = await response.json();
+                showStatus(queueStatus, false, result.error);
+            }
+        } catch (err) {
+            showStatus(queueStatus, false, 'Connection error');
+        }
+    }
+
+    async function removeFromQueue(entryId) {
+        try {
+            const response = await fetch(`/api/queue/${entryId}`, { method: 'DELETE' });
+            if (response.ok) {
+                showStatus(queueStatus, true, 'Removed from queue');
+                loadQueue();
+            } else {
+                showStatus(queueStatus, false, 'Failed to remove');
+            }
+        } catch (err) {
+            showStatus(queueStatus, false, 'Connection error');
+        }
+    }
+
+    // Initial load
+    loadAvailableTexts();
+    loadQueue();
+{% endblock %}

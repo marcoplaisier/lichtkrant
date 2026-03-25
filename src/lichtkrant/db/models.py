@@ -48,7 +48,6 @@ class Text:
     background: str
     font: str
     speed: int
-    active: bool
     created_at: datetime | None = None
 
     @property
@@ -67,6 +66,22 @@ class Text:
             "background": self.background,
             "font": self.font,
             "speed": self.speed,
-            "active": self.active,
             "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+@dataclass
+class QueueEntry:
+    """An entry in the display queue."""
+
+    id: int | None
+    text_id: int
+    position: int
+
+    def to_dict(self) -> dict:
+        """Convert to dictionary for JSON serialization."""
+        return {
+            "id": self.id,
+            "text_id": self.text_id,
+            "position": self.position,
         }

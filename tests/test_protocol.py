@@ -121,7 +121,6 @@ class TestMessageBuilder:
             background="NONE",
             font="KONGTEXT",
             speed=32,
-            active=True,
         )
 
         # Build message the same way the dispatcher does

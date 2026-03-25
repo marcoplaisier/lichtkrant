@@ -78,7 +78,7 @@
             const queue = data.queue || [];
             const el = document.getElementById('queueStatus');
             if (queue.length === 0) {
-                el.innerHTML = '<p style="color: #666;">Queue is empty. Add texts to the queue to start playback.</p>';
+                el.innerHTML = '<p style="color: #9ca3af;">Queue is empty. Add texts to the queue to start playback.</p>';
             } else {
                 el.innerHTML = `<p><strong>${queue.length}</strong> text${queue.length !== 1 ? 's' : ''} in queue</p>`;
             }

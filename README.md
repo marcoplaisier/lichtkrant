@@ -10,11 +10,11 @@ Raspberry Pi controller for a "Lichtkrant" (Dutch: light newspaper) — a scroll
 - WiFi access point with captive portal for standalone operation
 - SPI communication with REQUEST line handshake
 
-## Installation on Raspberry Pi 5
+## Installation
 
 ### Prerequisites
 
-- Raspberry Pi 5 running Raspberry Pi OS (Bookworm or later)
+- Raspberry Pi 3B or Pi 5 running Raspberry Pi OS (Bookworm)
 - Python 3.11+
 - SPI enabled
 - The Lichtkrant display hardware connected via SPI
@@ -37,6 +37,15 @@ You should see `/dev/spidev0.0` (and possibly `/dev/spidev0.1`).
 
 ### 2. Install system dependencies
 
+**Raspberry Pi 3B:**
+
+```bash
+sudo apt update
+sudo apt install -y python3-dev git
+```
+
+**Raspberry Pi 5:**
+
 ```bash
 sudo apt update
 sudo apt install -y python3-dev git swig liblgpio-dev
@@ -54,7 +63,18 @@ source ~/.bashrc
 ```bash
 git clone <repository-url> ~/lichtkrant
 cd ~/lichtkrant
-uv sync --extra hw
+```
+
+**Raspberry Pi 3B:**
+
+```bash
+uv sync --extra hw-pi3
+```
+
+**Raspberry Pi 5:**
+
+```bash
+uv sync --extra hw-pi5
 ```
 
 ### 5. Configure
@@ -148,8 +168,10 @@ sudo journalctl -u lichtkrant -f
 
 ### Wiring
 
-| Pi 5 (BCM) | PIC18F27K40 | Function |
-|-------------|-------------|----------|
+The SPI and GPIO pin layout is identical for Pi 3B and Pi 5 (BCM numbering):
+
+| BCM Pin | PIC18F27K40 | Function |
+|---------|-------------|----------|
 | GPIO 10 (MOSI) | SDI | SPI data |
 | GPIO 11 (SCLK) | SCK | SPI clock |
 | GPIO 8 (CE0) | SS | SPI chip select |

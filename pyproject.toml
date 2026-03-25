@@ -10,7 +10,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-hw = [
+hw-pi3 = [
+    "spidev>=3.6",
+    "RPi.GPIO>=0.7",
+]
+hw-pi5 = [
     "spidev>=3.6",
     "rpi-lgpio>=0.6",
 ]

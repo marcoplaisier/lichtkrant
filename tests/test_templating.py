@@ -51,9 +51,9 @@ class TestRender:
 
     @patch("lichtkrant.templating._fetch_price")
     def test_symbol_template(self, mock_fetch) -> None:
-        """{{AAPL}} resolves to stock price."""
+        """{{symbol:AAPL}} resolves to stock price."""
         mock_fetch.return_value = "198.50"
-        result = render("Price: {{AAPL}}")
+        result = render("Price: {{symbol:AAPL}}")
         assert result == "Price: AAPL 198.50"
         mock_fetch.assert_called_once_with("AAPL")
 
@@ -61,7 +61,7 @@ class TestRender:
     def test_symbol_case_insensitive(self, mock_fetch) -> None:
         """Symbol names are uppercased."""
         mock_fetch.return_value = "150.00"
-        result = render("{{aapl}}")
+        result = render("{{symbol:aapl}}")
         assert result == "AAPL 150.00"
         mock_fetch.assert_called_once_with("AAPL")
 
@@ -69,27 +69,49 @@ class TestRender:
     def test_symbol_fetch_failure(self, mock_fetch) -> None:
         """Failed fetch shows N/A."""
         mock_fetch.return_value = None
-        result = render("{{AAPL}}")
+        result = render("{{symbol:AAPL}}")
         assert result == "AAPL:N/A"
 
     @patch("lichtkrant.templating._fetch_price")
     def test_symbol_caching(self, mock_fetch) -> None:
         """Second call uses cache, not another fetch."""
         mock_fetch.return_value = "200.00"
-        render("{{TSLA}}")
-        render("{{TSLA}}")
+        render("{{symbol:TSLA}}")
+        render("{{symbol:TSLA}}")
         mock_fetch.assert_called_once_with("TSLA")
 
-    def test_date_and_symbol(self) -> None:
+    @patch("lichtkrant.templating._fetch_price")
+    def test_negative_caching(self, mock_fetch) -> None:
+        """Failed fetches are cached to avoid repeated network calls."""
+        mock_fetch.return_value = None
+        render("{{symbol:BAD}}")
+        render("{{symbol:BAD}}")
+        # Only one fetch — the failure was cached
+        mock_fetch.assert_called_once_with("BAD")
+
+    def test_date_not_treated_as_symbol(self) -> None:
         """date builtin is not treated as a symbol."""
         with patch("lichtkrant.templating._fetch_price") as mock:
             render("{{date}}")
+            mock.assert_not_called()
+
+    def test_unknown_var_passes_through(self) -> None:
+        """Unknown variable names are left unchanged."""
+        assert render("{{hello}}") == "{{hello}}"
+
+    def test_unknown_var_no_fetch(self) -> None:
+        """Unknown variables do not trigger a stock fetch."""
+        with patch("lichtkrant.templating._fetch_price") as mock:
+            render("{{hello}}")
             mock.assert_not_called()
 
 
 class TestHasTemplates:
     def test_has_templates(self) -> None:
         assert has_templates("Hello {{date}}") is True
+
+    def test_has_symbol_template(self) -> None:
+        assert has_templates("{{symbol:AAPL}}") is True
 
     def test_no_templates(self) -> None:
         assert has_templates("Hello World") is False

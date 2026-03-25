@@ -43,7 +43,11 @@ def decode(data: bytes) -> list[str]:
     while i < len(content):
         byte = content[i]
 
-        if byte == CONTROL_CHAR and i + 3 < len(content):
+        if byte == CONTROL_CHAR and i + 3 >= len(content):
+            lines.append(f"Truncated control sequence at offset {i}")
+            break
+
+        if byte == CONTROL_CHAR:
             code = content[i + 1]
 
             if code == ControlCode.PAUSE:

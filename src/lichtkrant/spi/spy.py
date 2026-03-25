@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from collections import deque
 from typing import TYPE_CHECKING
 
 from lichtkrant.protocol.decoder import decode, format_hex
@@ -18,7 +19,7 @@ class SpySPIDriver:
 
     def __init__(self, config: Config) -> None:
         self.config = config
-        self.history: list[bytes] = []
+        self.history: deque[bytes] = deque(maxlen=1000)
         self._message_count = 0
 
     def open(self) -> None:

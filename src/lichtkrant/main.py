@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import logging
 import sys
 from pathlib import Path
 
@@ -61,8 +62,6 @@ def main() -> int:
     spi_driver = None
     dispatcher = None
     if args.dry_run:
-        import logging
-
         from lichtkrant.dispatcher import TextDispatcher
         from lichtkrant.spi.spy import SpySPIDriver
 

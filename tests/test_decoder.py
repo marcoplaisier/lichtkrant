@@ -114,9 +114,24 @@ class TestDecode:
         assert any('"World" color=GREEN' in line for line in lines)
         assert any('"SALE"' in line and "scroll-off" in line for line in lines)
 
+    def test_literal_hash(self) -> None:
+        """Decode a message containing a literal '#' character."""
+        msg = MessageBuilder().add_text("A#B", Color.WHITE).build()
+        lines = decode(msg)
+        assert any('"#"' in line for line in lines)
+        assert any('"A"' in line for line in lines)
+        assert any('"B"' in line for line in lines)
+
     def test_too_short(self) -> None:
         lines = decode(b"\xfe\x00")
         assert "Too short" in lines[0]
+
+    def test_truncated_control_sequence(self) -> None:
+        """Truncated control char at end of content is reported."""
+        # Header (6 bytes) + '#' as last byte + terminator
+        data = bytes([0xFE, 0x00, 0x20, 0x01, 0x00, 0x00, 0x23, 0xAA, 0xAA])
+        lines = decode(data)
+        assert any("Truncated" in line for line in lines)
 
     def test_roundtrip_all_segment_types(self) -> None:
         """Build a message with every segment type and verify decode."""

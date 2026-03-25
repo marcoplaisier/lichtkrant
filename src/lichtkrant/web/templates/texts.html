@@ -36,29 +36,30 @@
     }
     .segment-row .segment-main {
         display: flex;
+        flex-direction: column;
         gap: 8px;
         width: 100%;
+    }
+    .segment-row .segment-main .seg-top-row {
+        display: flex;
+        gap: 8px;
         align-items: center;
     }
     .segment-row .segment-main select.seg-type {
-        width: 120px;
-        flex-shrink: 0;
-    }
-    .segment-row .segment-main input[type="text"] { flex: 1; }
-    .segment-row .segment-main select.seg-color {
-        width: 130px;
-        flex-shrink: 0;
+        flex: 1;
+        min-width: 0;
     }
     .segment-row .segment-main .btn-remove {
         padding: 10px 12px;
         font-size: 14px;
         flex-shrink: 0;
     }
+    .segment-row .segment-main input[type="text"] { width: 100%; }
+    .segment-row .segment-main select.seg-color { width: 100%; }
     .segment-row .segment-extra {
         display: flex;
         gap: 8px;
         width: 100%;
-        padding-left: 128px;
         align-items: center;
     }
     .segment-row .segment-extra label {
@@ -193,10 +194,12 @@
         row.className = 'segment-row';
         row.innerHTML = `
             <div class="segment-main">
-                <select class="seg-type">${TYPE_OPTIONS}</select>
+                <div class="seg-top-row">
+                    <select class="seg-type">${TYPE_OPTIONS}</select>
+                    <button type="button" class="btn btn-small btn-danger btn-remove">X</button>
+                </div>
                 <input type="text" class="seg-text" placeholder="Enter text..." maxlength="200" value="${escapeAttr(text)}">
                 <select class="seg-color">${COLOR_OPTIONS}</select>
-                <button type="button" class="btn btn-small btn-danger btn-remove">X</button>
             </div>
             <div class="segment-extra" data-duration="${duration}" data-times="${times}" data-scroll-off="${scroll_off}"></div>
         `;

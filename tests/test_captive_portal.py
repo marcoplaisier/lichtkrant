@@ -28,24 +28,24 @@ def no_portal_app(config):
 
 
 class TestCaptivePortalRedirect:
-    def test_foreign_host_redirects(self, portal_app):
-        """Request with a foreign Host header should get a 302 redirect."""
+    def test_foreign_host_redirects_to_welcome(self, portal_app):
+        """Request with a foreign Host header should redirect to /welcome."""
         with portal_app.test_client() as client:
             response = client.get(
                 "/", headers={"Host": "captive.apple.com"}
             )
             assert response.status_code == 302
-            assert response.headers["Location"] == "http://10.42.0.1:8080/"
+            assert response.headers["Location"] == "http://10.42.0.1:8080/welcome"
 
-    def test_android_generate204_redirects(self, portal_app):
-        """Android connectivity check should redirect."""
+    def test_android_generate204_redirects_to_welcome(self, portal_app):
+        """Android connectivity check should redirect to /welcome."""
         with portal_app.test_client() as client:
             response = client.get(
                 "/generate_204",
                 headers={"Host": "connectivitycheck.gstatic.com"},
             )
             assert response.status_code == 302
-            assert response.headers["Location"] == "http://10.42.0.1:8080/"
+            assert response.headers["Location"] == "http://10.42.0.1:8080/welcome"
 
     def test_portal_ip_host_passes_through(self, portal_app):
         """Request with the portal IP as Host should not redirect."""
@@ -81,6 +81,23 @@ class TestCaptivePortalRedirect:
                 headers={"Host": "www.msftncsi.com"},
             )
             assert response.status_code == 302
+
+    def test_welcome_page_renders(self, portal_app):
+        """The /welcome page renders with a link to the dashboard."""
+        with portal_app.test_client() as client:
+            response = client.get(
+                "/welcome", headers={"Host": "10.42.0.1:8080"}
+            )
+            assert response.status_code == 200
+            html = response.data.decode()
+            assert 'href="/"' in html
+            assert "Lichtkrant" in html
+
+    def test_welcome_accessible_without_portal(self, no_portal_app):
+        """The /welcome page works even without captive portal."""
+        with no_portal_app.test_client() as client:
+            response = client.get("/welcome")
+            assert response.status_code == 200
 
     def test_firefox_redirect(self, portal_app):
         """Firefox captive portal detection should redirect."""

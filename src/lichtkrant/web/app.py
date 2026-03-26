@@ -31,14 +31,20 @@ def create_app(
     valid_color_names = {c.name for c in Color}
 
     if portal_ip:
+        portal_base = f"http://{portal_ip}:{config.web.port}"
 
         @app.before_request
         def captive_portal_redirect():
             host = request.host.split(":")[0]
             if host not in ("localhost", "127.0.0.1", portal_ip):
-                return redirect(f"http://{portal_ip}:{config.web.port}/", code=302)
+                return redirect(f"{portal_base}/welcome", code=302)
 
     # --- Page routes ---
+
+    @app.route("/welcome")
+    def welcome() -> str:
+        """Captive portal landing page — minimal, prompts user to open browser."""
+        return render_template("welcome.html")
 
     @app.route("/")
     def dashboard() -> str:

@@ -20,7 +20,16 @@ _FONTS = {int(f): f.name for f in Font}
 def decode(data: bytes) -> list[str]:
     """Decode a protocol message into human-readable lines.
 
-    Returns a list of description strings, one per logical element.
+    Parses the 6-byte header, content pairs (char + color byte), and
+    control sequences (pause, blink, flash), returning one description
+    string per logical element.
+
+    Args:
+        data: Raw protocol message bytes (header + content + terminator).
+
+    Returns:
+        List of human-readable description strings. The first element is
+        always the header line. Warnings are included for malformed data.
     """
     if len(data) < 8:
         return [f"Too short ({len(data)} bytes)"]

@@ -94,7 +94,21 @@ def _resolve_var(name: str) -> str:
 
 
 def render(text: str) -> str:
-    """Replace all {{var}} placeholders in text with their values."""
+    """Replace all ``{{var}}`` placeholders in text with their values.
+
+    Supported variables:
+        - ``{{date}}`` — local date, e.g. "26 Mar 2026"
+        - ``{{time}}`` — local time, e.g. "14:30"
+        - ``{{symbol:AAPL}}`` — stock price, e.g. "AAPL 198.50"
+
+    Unknown variables are passed through unchanged.
+
+    Args:
+        text: Input string, possibly containing ``{{...}}`` placeholders.
+
+    Returns:
+        String with all recognized placeholders replaced.
+    """
     if "{{" not in text:
         return text
     return TEMPLATE_RE.sub(lambda m: _resolve_var(m.group(1)), text)

@@ -15,7 +15,11 @@ logger = logging.getLogger(__name__)
 
 
 class SpySPIDriver:
-    """Drop-in SPIDriver replacement that decodes and logs all messages."""
+    """Drop-in SPIDriver replacement that decodes and logs all messages.
+
+    Used by ``--dry-run`` mode. Records all sent messages in ``history``
+    (bounded to 1000 entries) and logs decoded protocol output.
+    """
 
     def __init__(self, config: Config) -> None:
         self.config = config

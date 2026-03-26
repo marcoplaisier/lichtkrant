@@ -1,0 +1,409 @@
+openapi: "3.1.0"
+info:
+  title: Lichtkrant API
+  description: REST API for the Lichtkrant LED scrolling display controller.
+  version: "0.1.0"
+
+servers:
+  - url: http://localhost:8080
+    description: Local development
+
+paths:
+  /api/send:
+    post:
+      summary: Send a message directly to the display
+      description: |
+        Immediately sends a single text message to the LED display via SPI,
+        bypassing the queue. Useful for one-off announcements.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              properties:
+                text:
+                  type: string
+                  maxLength: 200
+                  example: Hello World
+                color:
+                  type: string
+                  enum: [NONE, WHITE, GREEN, RED, BLUE, YELLOW, CYAN, MAGENTA]
+                  default: WHITE
+                background:
+                  type: string
+                  enum: [NONE, GREEN, RED, BLUE, YELLOW, CYAN, MAGENTA, WHITE]
+                  default: NONE
+                font:
+                  type: string
+                  enum: [KONGTEXT, CUSTOM, MUNRO_SMALL]
+                  default: KONGTEXT
+                speed:
+                  type: integer
+                  minimum: 1
+                  maximum: 255
+                  default: 32
+      responses:
+        "200":
+          description: Message sent successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  bytes_sent:
+                    type: integer
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "503":
+          description: Display not ready (timeout waiting for REQUEST)
+
+  /api/texts:
+    get:
+      summary: List all texts
+      responses:
+        "200":
+          description: Array of all stored texts
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  texts:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Text"
+        "503":
+          $ref: "#/components/responses/NoDatabase"
+
+    post:
+      summary: Create a new text
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TextInput"
+      responses:
+        "201":
+          description: Text created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  text:
+                    $ref: "#/components/schemas/Text"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "503":
+          $ref: "#/components/responses/NoDatabase"
+
+  /api/texts/{text_id}:
+    parameters:
+      - name: text_id
+        in: path
+        required: true
+        schema:
+          type: integer
+
+    get:
+      summary: Get a single text
+      responses:
+        "200":
+          description: The requested text
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  text:
+                    $ref: "#/components/schemas/Text"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    put:
+      summary: Update a text
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TextInput"
+      responses:
+        "200":
+          description: Text updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  text:
+                    $ref: "#/components/schemas/Text"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    delete:
+      summary: Delete a text
+      description: Also removes any queue entries referencing this text.
+      responses:
+        "200":
+          description: Text deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/queue:
+    get:
+      summary: Get the display queue
+      description: Returns ordered queue entries with embedded text data.
+      responses:
+        "200":
+          description: The current queue
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  queue:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/QueueEntry"
+
+    post:
+      summary: Add a text to the queue
+      description: Appends the text to the end of the queue. The same text can appear multiple times.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text_id]
+              properties:
+                text_id:
+                  type: integer
+      responses:
+        "201":
+          description: Entry added
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  entry:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                      text_id:
+                        type: integer
+                      position:
+                        type: integer
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    put:
+      summary: Bulk reorder queue entries
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [entries]
+              properties:
+                entries:
+                  type: array
+                  items:
+                    type: object
+                    required: [id, position]
+                    properties:
+                      id:
+                        type: integer
+                      position:
+                        type: integer
+      responses:
+        "200":
+          description: Queue reordered
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /api/queue/{entry_id}:
+    parameters:
+      - name: entry_id
+        in: path
+        required: true
+        schema:
+          type: integer
+
+    delete:
+      summary: Remove a queue entry
+      responses:
+        "200":
+          description: Entry removed
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /colors:
+    get:
+      summary: List available colors
+      responses:
+        "200":
+          description: Text and background color names
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  text_colors:
+                    type: array
+                    items:
+                      type: string
+                  background_colors:
+                    type: array
+                    items:
+                      type: string
+
+  /fonts:
+    get:
+      summary: List available fonts
+      responses:
+        "200":
+          description: Font names
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  fonts:
+                    type: array
+                    items:
+                      type: string
+
+components:
+  schemas:
+    Segment:
+      type: object
+      required: [type]
+      properties:
+        type:
+          type: string
+          enum: [text, pause, fast_blink, slow_blink, flash]
+        text:
+          type: string
+          description: Content for text and flash segments
+        color:
+          type: string
+          description: Color name for text and flash segments
+        duration:
+          type: integer
+          description: Seconds for pause or flash hold
+        times:
+          type: integer
+          description: Repeat count for blink segments
+        scroll_off:
+          type: boolean
+          description: Flash scroll-off mode (vs instant off)
+
+    TextInput:
+      type: object
+      properties:
+        segments:
+          type: array
+          items:
+            $ref: "#/components/schemas/Segment"
+        content:
+          type: string
+          description: "Legacy format: single text content"
+        color:
+          type: string
+          description: "Legacy format: single color"
+        background:
+          type: string
+          default: NONE
+        font:
+          type: string
+          default: KONGTEXT
+        speed:
+          type: integer
+          minimum: 1
+          maximum: 255
+          default: 32
+
+    Text:
+      type: object
+      properties:
+        id:
+          type: integer
+        content:
+          type: string
+          description: Concatenated text from text and flash segments
+        segments:
+          type: array
+          items:
+            $ref: "#/components/schemas/Segment"
+        background:
+          type: string
+        font:
+          type: string
+        speed:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    QueueEntry:
+      type: object
+      properties:
+        id:
+          type: integer
+        text_id:
+          type: integer
+        position:
+          type: integer
+        text:
+          $ref: "#/components/schemas/Text"
+
+  responses:
+    BadRequest:
+      description: Invalid request data
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+    NoDatabase:
+      description: Database not configured
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string

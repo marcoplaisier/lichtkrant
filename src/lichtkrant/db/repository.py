@@ -292,7 +292,19 @@ class TextRepository:
     def get_next_queue_entry(
         self, current_position: int | None = None
     ) -> tuple[QueueEntry, Text] | None:
-        """Get the next queue entry after current_position, wrapping to start."""
+        """Get the next queue entry after current_position, wrapping to start.
+
+        Used by the dispatcher to cycle through the queue. When the end is
+        reached, wraps back to the first entry.
+
+        Args:
+            current_position: Position of the last-displayed entry, or None
+                to start from the beginning.
+
+        Returns:
+            Tuple of (QueueEntry, Text) for the next entry, or None if the
+            queue is empty.
+        """
         with self._connect() as conn:
             if current_position is not None:
                 row = conn.execute(

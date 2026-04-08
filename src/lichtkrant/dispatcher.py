@@ -105,7 +105,8 @@ class TextDispatcher:
                 continue
 
             logger.debug(
-                "Built message for text_id=%s (%d bytes); handing to SPI",
+                "Built message for text_id=%s (%d bytes); "
+                "waiting for REQUEST before sending",
                 text.id,
                 len(message),
             )

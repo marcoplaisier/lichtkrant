@@ -21,7 +21,7 @@ class SPIConfig:
 class GPIOConfig:
     """GPIO configuration."""
 
-    request_pin: int = 17
+    request_pin: int = 4
     request_active_high: bool = False
 
 

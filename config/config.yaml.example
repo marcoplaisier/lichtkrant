@@ -5,9 +5,10 @@ spi:
   mode: 0
 
 gpio:
-  request_pin: 17
-  # Per the Lichtkrant 2.1 spec the REQUEST line is idle HIGH and the PIC
-  # pulls it LOW to request the next text, so it is active-low.
+  # On the Lichtkrant 2.1 board, REQUEST is wired to BCM4 (header pin 7).
+  request_pin: 4
+  # Per the spec the REQUEST line is idle HIGH and the PIC pulls it LOW
+  # to request the next text, so it is active-low.
   request_active_high: false
 
 wifi:

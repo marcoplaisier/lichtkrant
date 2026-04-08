@@ -51,6 +51,11 @@ def main() -> int:
     """Main entry point."""
     args = parse_args()
 
+    logging.basicConfig(
+        level=logging.DEBUG if args.debug else logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    )
+
     # Load configuration
     config = Config.load(args.config)
 

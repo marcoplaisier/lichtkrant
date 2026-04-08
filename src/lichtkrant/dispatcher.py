@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import logging
 import threading
 import time
 from typing import TYPE_CHECKING
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from lichtkrant.config import Config
@@ -65,31 +68,64 @@ class TextDispatcher:
 
     def _dispatch_loop(self) -> None:
         """Main dispatch loop running in background thread."""
+        logger.info("Dispatch loop started")
+        empty_logged = False
         while self._running:
             result = self.repository.get_next_queue_entry(self._current_position)
             if result is None:
-                # No queue entries, wait and retry
+                if not empty_logged:
+                    logger.info(
+                        "Queue empty (after position=%s); idling",
+                        self._current_position,
+                    )
+                    empty_logged = True
                 time.sleep(1.0)
                 continue
+            empty_logged = False
 
             entry, text = result
+            logger.info(
+                "Next queue entry: position=%d text_id=%s",
+                entry.position,
+                text.id,
+            )
 
             # Build the message
             try:
                 message = self._build_message(text)
-            except (KeyError, ValueError):
-                # Invalid enum values, skip this entry
+            except (KeyError, ValueError) as exc:
+                logger.warning(
+                    "Skipping text_id=%s at position=%d: invalid field (%s)",
+                    text.id,
+                    entry.position,
+                    exc,
+                )
                 self._current_position = entry.position
                 self._current_text_id = text.id
                 continue
 
+            logger.debug(
+                "Built message for text_id=%s (%d bytes); handing to SPI",
+                text.id,
+                len(message),
+            )
+
             # Wait for REQUEST and send
             if self.spi_driver.send(message):
+                logger.info(
+                    "Dispatched text_id=%s at position=%d",
+                    text.id,
+                    entry.position,
+                )
                 self._current_position = entry.position
                 self._current_text_id = text.id
             else:
-                # Timeout waiting for REQUEST, retry after short delay
+                logger.warning(
+                    "SPI send failed for text_id=%s (REQUEST timeout); retrying",
+                    text.id,
+                )
                 time.sleep(0.1)
+        logger.info("Dispatch loop stopped")
 
     def start(self) -> None:
         """Start the dispatcher thread."""

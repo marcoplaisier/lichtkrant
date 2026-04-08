@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import logging
 import time
 from typing import TYPE_CHECKING
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from lichtkrant.config import Config
@@ -44,6 +47,17 @@ class SPIDriver:
         # Set up REQUEST GPIO pin
         GPIO.setmode(GPIO.BCM)
         GPIO.setup(self.config.gpio.request_pin, GPIO.IN)
+        logger.info(
+            "SPI opened on %s (bus=%d device=%d speed=%d mode=%d); "
+            "REQUEST on BCM pin %d (active %s)",
+            device_path,
+            bus,
+            device,
+            self.config.spi.speed_hz,
+            self.config.spi.mode,
+            self.config.gpio.request_pin,
+            "HIGH" if self.config.gpio.request_active_high else "LOW",
+        )
 
         self._initialized = True
 
@@ -61,14 +75,37 @@ class SPIDriver:
         if not HAS_HARDWARE:
             return True
 
+        pin = self.config.gpio.request_pin
         active_level = GPIO.HIGH if self.config.gpio.request_active_high else GPIO.LOW
+        initial = GPIO.input(pin)
+        logger.debug(
+            "Waiting for REQUEST on pin %d (current=%d, need=%d, timeout=%.2fs)",
+            pin,
+            initial,
+            active_level,
+            timeout,
+        )
         start = time.monotonic()
 
         while time.monotonic() - start < timeout:
-            if GPIO.input(self.config.gpio.request_pin) == active_level:
+            if GPIO.input(pin) == active_level:
+                elapsed = time.monotonic() - start
+                logger.debug(
+                    "REQUEST asserted on pin %d after %.3fs",
+                    pin,
+                    elapsed,
+                )
                 return True
             time.sleep(0.001)
 
+        logger.warning(
+            "Timeout waiting for REQUEST on pin %d after %.2fs (still reads %d, "
+            "need %d)",
+            pin,
+            timeout,
+            GPIO.input(pin),
+            active_level,
+        )
         return False
 
     def send(self, data: bytes, timeout: float = 5.0) -> bool:
@@ -80,6 +117,7 @@ class SPIDriver:
             return False
 
         self._spi.xfer2(list(data))
+        logger.info("Sent %d bytes over SPI", len(data))
         return True
 
     def __enter__(self) -> SPIDriver:

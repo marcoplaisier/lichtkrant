@@ -1,6 +1,7 @@
 spi:
   device: "/dev/spidev0.0"
-  speed_hz: 500000
+  # The Lichtkrant 2.1 spec requires 125 kHz so the PIC can keep up.
+  speed_hz: 125000
   mode: 0
 
 gpio:

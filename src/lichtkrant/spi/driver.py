@@ -159,7 +159,13 @@ class SPIDriver:
         if not self.wait_for_request(timeout):
             return False
 
-        self._spi.xfer2(list(data))
+        # Use xfer (one spi_ioc_transfer per byte) rather than xfer2 so CS
+        # toggles between bytes and the PIC gets a small inter-byte gap to
+        # service its SPI receive interrupt. A sibling project with the
+        # same PIC-slave approach (marcoplaisier/weathervane) uses xfer for
+        # exactly this reason. xfer2 at 125 kHz left no room for the PIC
+        # to copy each byte out of SSPBUF before the next one arrived.
+        self._spi.xfer(list(data))
         logger.info(
             "Sent %d bytes over SPI: %s",
             len(data),

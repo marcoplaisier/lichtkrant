@@ -115,6 +115,31 @@ class SPIDriver:
         )
         return False
 
+    def _wait_for_release(self, timeout: float = 5.0) -> bool:
+        """Wait for REQUEST to deassert after a send, so the next falling
+        edge can be recognised as a new request."""
+        if not HAS_HARDWARE:
+            return True
+
+        pin = self.config.gpio.request_pin
+        active_level = GPIO.HIGH if self.config.gpio.request_active_high else GPIO.LOW
+        start = time.monotonic()
+        while time.monotonic() - start < timeout:
+            if GPIO.input(pin) != active_level:
+                logger.debug(
+                    "REQUEST released on pin %d after %.3fs",
+                    pin,
+                    time.monotonic() - start,
+                )
+                return True
+            time.sleep(0.001)
+        logger.warning(
+            "Timeout waiting for REQUEST release on pin %d after %.2fs",
+            pin,
+            timeout,
+        )
+        return False
+
     def send(self, data: bytes, timeout: float = 5.0) -> bool:
         """Send data to PIC after waiting for REQUEST signal."""
         if not self._initialized or not self._spi:
@@ -125,6 +150,11 @@ class SPIDriver:
 
         self._spi.xfer2(list(data))
         logger.info("Sent %d bytes over SPI", len(data))
+
+        # Wait for the PIC to deassert REQUEST before returning, so the
+        # dispatcher does not immediately see the still-asserted line as
+        # a new request and resend the same message.
+        self._wait_for_release(timeout)
         return True
 
     def __enter__(self) -> SPIDriver:

@@ -96,7 +96,7 @@ def main() -> int:
             dispatcher.start()
             print("Text dispatcher started")
         except Exception as e:
-            print(f"Warning: Could not initialize SPI: {e}")
+            logging.exception("Could not initialize SPI: %s", e)
             print("Running in web-only mode")
 
     # Start WiFi access point if not disabled

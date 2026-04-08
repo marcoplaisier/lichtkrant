@@ -5,7 +5,9 @@ spi:
 
 gpio:
   request_pin: 17
-  request_active_high: true
+  # Per the Lichtkrant 2.1 spec the REQUEST line is idle HIGH and the PIC
+  # pulls it LOW to request the next text, so it is active-low.
+  request_active_high: false
 
 wifi:
   ssid: "Lichtkrant"

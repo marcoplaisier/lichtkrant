@@ -44,9 +44,16 @@ class SPIDriver:
         self._spi.max_speed_hz = self.config.spi.speed_hz
         self._spi.mode = self.config.spi.mode
 
-        # Set up REQUEST GPIO pin
+        # Set up REQUEST GPIO pin. The Lichtkrant 2.1 spec describes REQUEST
+        # as idle-HIGH, pulled LOW by the PIC when it wants the next text.
+        # That is an open-collector style signal, so enable the Pi's
+        # internal pull-up to establish the idle state.
         GPIO.setmode(GPIO.BCM)
-        GPIO.setup(self.config.gpio.request_pin, GPIO.IN)
+        GPIO.setup(
+            self.config.gpio.request_pin,
+            GPIO.IN,
+            pull_up_down=GPIO.PUD_UP,
+        )
         logger.info(
             "SPI opened on %s (bus=%d device=%d speed=%d mode=%d); "
             "REQUEST on BCM pin %d (active %s)",

@@ -126,6 +126,7 @@ def main() -> int:
             host=config.web.host,
             port=config.web.port,
             debug=args.debug,
+            use_reloader=False,
         )
     finally:
         if dispatcher:

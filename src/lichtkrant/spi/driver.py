@@ -149,7 +149,11 @@ class SPIDriver:
             return False
 
         self._spi.xfer2(list(data))
-        logger.info("Sent %d bytes over SPI", len(data))
+        logger.info(
+            "Sent %d bytes over SPI: %s",
+            len(data),
+            data.hex(" "),
+        )
 
         # Wait for the PIC to deassert REQUEST before returning, so the
         # dispatcher does not immediately see the still-asserted line as

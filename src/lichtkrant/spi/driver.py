@@ -43,6 +43,16 @@ class SPIDriver:
         self._spi.open(bus, device)
         self._spi.max_speed_hz = self.config.spi.speed_hz
         self._spi.mode = self.config.spi.mode
+        try:
+            self._spi.lsbfirst = self.config.spi.lsb_first
+        except OSError as exc:
+            # Not all Pi SPI drivers support toggling bit order; fall back
+            # to the kernel default (MSB first) and log the reason.
+            logger.warning(
+                "Could not set SPI lsbfirst=%s: %s",
+                self.config.spi.lsb_first,
+                exc,
+            )
 
         # Set up REQUEST GPIO pin. The Lichtkrant 2.1 spec describes REQUEST
         # as idle-HIGH, pulled LOW by the PIC when it wants the next text.
@@ -55,13 +65,14 @@ class SPIDriver:
             pull_up_down=GPIO.PUD_UP,
         )
         logger.info(
-            "SPI opened on %s (bus=%d device=%d speed=%d mode=%d); "
+            "SPI opened on %s (bus=%d device=%d speed=%d mode=%d %s); "
             "REQUEST on BCM pin %d (active %s)",
             device_path,
             bus,
             device,
             self.config.spi.speed_hz,
             self.config.spi.mode,
+            "LSB-first" if self.config.spi.lsb_first else "MSB-first",
             self.config.gpio.request_pin,
             "HIGH" if self.config.gpio.request_active_high else "LOW",
         )

@@ -15,6 +15,7 @@ class SPIConfig:
     device: str = "/dev/spidev0.0"
     speed_hz: int = 125000
     mode: int = 0
+    lsb_first: bool = False
 
 
 @dataclass
@@ -91,6 +92,7 @@ class Config:
                 "device": self.spi.device,
                 "speed_hz": self.spi.speed_hz,
                 "mode": self.spi.mode,
+                "lsb_first": self.spi.lsb_first,
             },
             "gpio": {
                 "request_pin": self.gpio.request_pin,

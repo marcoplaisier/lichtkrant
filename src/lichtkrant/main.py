@@ -98,6 +98,7 @@ def main() -> int:
         except Exception as e:
             logging.exception("Could not initialize SPI: %s", e)
             print("Running in web-only mode")
+            spi_driver = None
 
     # Start WiFi access point if not disabled
     portal_ip = None

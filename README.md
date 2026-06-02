@@ -160,12 +160,13 @@ Default configuration:
 ```yaml
 spi:
   device: "/dev/spidev0.0"
-  speed_hz: 500000
+  speed_hz: 125000         # Lichtkrant 2.1 spec: 125 kHz so the PIC can keep up
   mode: 0
+  lsb_first: false         # bit order on the wire
 
 gpio:
-  request_pin: 17          # BCM pin for REQUEST handshake line
-  request_active_high: true
+  request_pin: 4           # BCM pin for REQUEST handshake line (header pin 7)
+  request_active_high: false  # line idles HIGH, PIC pulls LOW to request next text
 
 wifi:
   ssid: "Lichtkrant"
@@ -248,10 +249,12 @@ The SPI and GPIO pin layout is identical for Pi 3B and Pi 5 (BCM numbering):
 | GPIO 10 (MOSI) | SDI | SPI data |
 | GPIO 11 (SCLK) | SCK | SPI clock |
 | GPIO 8 (CE0) | SS | SPI chip select |
-| GPIO 17 | REQUEST pin | Handshake (PIC signals ready) |
+| GPIO 4 (header pin 7) | REQUEST pin | Handshake (PIC signals ready) |
 | GND | GND | Common ground |
 
-The REQUEST pin is active-high by default (configurable in `config.yaml`).
+The REQUEST pin is active-low: it idles HIGH and the PIC pulls it LOW to request
+the next text (an internal pull-up is enabled). This is configurable via
+`request_pin` / `request_active_high` in `config.yaml`.
 
 ## Captive Portal
 

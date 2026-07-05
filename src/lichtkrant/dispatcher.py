@@ -7,8 +7,6 @@ import threading
 import time
 from typing import TYPE_CHECKING
 
-logger = logging.getLogger(__name__)
-
 if TYPE_CHECKING:
     from lichtkrant.config import Config
     from lichtkrant.db import TextRepository
@@ -18,6 +16,8 @@ if TYPE_CHECKING:
 from lichtkrant.protocol import Color, Font, MessageBuilder
 from lichtkrant.protocol.constants import BackgroundColor
 from lichtkrant.templating import render as render_template
+
+logger = logging.getLogger(__name__)
 
 
 class TextDispatcher:

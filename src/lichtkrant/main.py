@@ -51,6 +51,11 @@ def main() -> int:
     """Main entry point."""
     args = parse_args()
 
+    logging.basicConfig(
+        level=logging.DEBUG if args.debug else logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    )
+
     # Load configuration
     config = Config.load(args.config)
 
@@ -91,8 +96,9 @@ def main() -> int:
             dispatcher.start()
             print("Text dispatcher started")
         except Exception as e:
-            print(f"Warning: Could not initialize SPI: {e}")
+            logging.exception("Could not initialize SPI: %s", e)
             print("Running in web-only mode")
+            spi_driver = None
 
     # Start WiFi access point if not disabled
     portal_ip = None
@@ -121,6 +127,7 @@ def main() -> int:
             host=config.web.host,
             port=config.web.port,
             debug=args.debug,
+            use_reloader=False,
         )
     finally:
         if dispatcher:

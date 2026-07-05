@@ -14,7 +14,7 @@ class TestConfigDefaults:
         assert config.web.port == 8080
         assert config.web.host == "0.0.0.0"
         assert config.spi.device == "/dev/spidev0.0"
-        assert config.gpio.request_pin == 17
+        assert config.gpio.request_pin == 4
         assert config.wifi.ssid == "Lichtkrant"
         assert config.database.path == "~/.lichtkrant/texts.db"
 

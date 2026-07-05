@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import logging
 import time
 from typing import TYPE_CHECKING
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from lichtkrant.config import Config
@@ -40,10 +43,39 @@ class SPIDriver:
         self._spi.open(bus, device)
         self._spi.max_speed_hz = self.config.spi.speed_hz
         self._spi.mode = self.config.spi.mode
+        try:
+            self._spi.lsbfirst = self.config.spi.lsb_first
+        except OSError as exc:
+            # Not all Pi SPI drivers support toggling bit order; fall back
+            # to the kernel default (MSB first) and log the reason.
+            logger.warning(
+                "Could not set SPI lsbfirst=%s: %s",
+                self.config.spi.lsb_first,
+                exc,
+            )
 
-        # Set up REQUEST GPIO pin
+        # Set up REQUEST GPIO pin. The Lichtkrant 2.1 spec describes REQUEST
+        # as idle-HIGH, pulled LOW by the PIC when it wants the next text.
+        # That is an open-collector style signal, so enable the Pi's
+        # internal pull-up to establish the idle state.
         GPIO.setmode(GPIO.BCM)
-        GPIO.setup(self.config.gpio.request_pin, GPIO.IN)
+        GPIO.setup(
+            self.config.gpio.request_pin,
+            GPIO.IN,
+            pull_up_down=GPIO.PUD_UP,
+        )
+        logger.info(
+            "SPI opened on %s (bus=%d device=%d speed=%d mode=%d %s); "
+            "REQUEST on BCM pin %d (active %s)",
+            device_path,
+            bus,
+            device,
+            self.config.spi.speed_hz,
+            self.config.spi.mode,
+            "LSB-first" if self.config.spi.lsb_first else "MSB-first",
+            self.config.gpio.request_pin,
+            "HIGH" if self.config.gpio.request_active_high else "LOW",
+        )
 
         self._initialized = True
 
@@ -61,14 +93,62 @@ class SPIDriver:
         if not HAS_HARDWARE:
             return True
 
+        pin = self.config.gpio.request_pin
         active_level = GPIO.HIGH if self.config.gpio.request_active_high else GPIO.LOW
+        initial = GPIO.input(pin)
+        logger.debug(
+            "Waiting for REQUEST on pin %d (current=%d, need=%d, timeout=%.2fs)",
+            pin,
+            initial,
+            active_level,
+            timeout,
+        )
         start = time.monotonic()
 
         while time.monotonic() - start < timeout:
-            if GPIO.input(self.config.gpio.request_pin) == active_level:
+            if GPIO.input(pin) == active_level:
+                elapsed = time.monotonic() - start
+                logger.debug(
+                    "REQUEST asserted on pin %d after %.3fs",
+                    pin,
+                    elapsed,
+                )
                 return True
             time.sleep(0.001)
 
+        logger.warning(
+            "Timeout waiting for REQUEST on pin %d after %.2fs (still reads %d, "
+            "need %d)",
+            pin,
+            timeout,
+            GPIO.input(pin),
+            active_level,
+        )
+        return False
+
+    def _wait_for_release(self, timeout: float = 5.0) -> bool:
+        """Wait for REQUEST to deassert after a send, so the next falling
+        edge can be recognised as a new request."""
+        if not HAS_HARDWARE:
+            return True
+
+        pin = self.config.gpio.request_pin
+        active_level = GPIO.HIGH if self.config.gpio.request_active_high else GPIO.LOW
+        start = time.monotonic()
+        while time.monotonic() - start < timeout:
+            if GPIO.input(pin) != active_level:
+                logger.debug(
+                    "REQUEST released on pin %d after %.3fs",
+                    pin,
+                    time.monotonic() - start,
+                )
+                return True
+            time.sleep(0.001)
+        logger.warning(
+            "Timeout waiting for REQUEST release on pin %d after %.2fs",
+            pin,
+            timeout,
+        )
         return False
 
     def send(self, data: bytes, timeout: float = 5.0) -> bool:
@@ -79,7 +159,23 @@ class SPIDriver:
         if not self.wait_for_request(timeout):
             return False
 
-        self._spi.xfer2(list(data))
+        # Use xfer (one spi_ioc_transfer per byte) rather than xfer2 so CS
+        # toggles between bytes and the PIC gets a small inter-byte gap to
+        # service its SPI receive interrupt. A sibling project with the
+        # same PIC-slave approach (marcoplaisier/weathervane) uses xfer for
+        # exactly this reason. xfer2 at 125 kHz left no room for the PIC
+        # to copy each byte out of SSPBUF before the next one arrived.
+        self._spi.xfer(list(data))
+        logger.info(
+            "Sent %d bytes over SPI: %s",
+            len(data),
+            data.hex(" "),
+        )
+
+        # Wait for the PIC to deassert REQUEST before returning, so the
+        # dispatcher does not immediately see the still-asserted line as
+        # a new request and resend the same message.
+        self._wait_for_release(timeout)
         return True
 
     def __enter__(self) -> SPIDriver:

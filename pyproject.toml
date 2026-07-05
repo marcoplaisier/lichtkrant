@@ -20,7 +20,7 @@ hw-pi5 = [
     "rpi-lgpio>=0.6",
 ]
 dev = [
-    "pytest>=8.0.0",
+    "pytest>=9.0.3",
     "ruff>=0.4.0",
     "mypy>=1.10.0",
 ]

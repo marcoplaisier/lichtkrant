@@ -258,6 +258,49 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/system/time:
+    get:
+      summary: Get the system time
+      description: Returns the Pi's current local time and timezone name.
+      responses:
+        "200":
+          description: Current system time
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SystemTime"
+    put:
+      summary: Set the system time
+      description: |
+        Sets the system clock of the Pi. A value without UTC offset is
+        interpreted as local time of the Pi. Requires the service to run as
+        root. The hardware clock is updated too when the Pi has one.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [time]
+              properties:
+                time:
+                  type: string
+                  description: ISO 8601 date-time, year 2000-2099
+                  example: "2026-10-01T14:30:00"
+      responses:
+        "200":
+          description: Time set; returns the new system time
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SystemTime"
+        "400":
+          description: Missing or invalid time
+        "403":
+          description: Service is not allowed to set the system time
+        "500":
+          description: Setting the system time failed
+
   /colors:
     get:
       summary: List available colors
@@ -296,6 +339,17 @@ paths:
 
 components:
   schemas:
+    SystemTime:
+      type: object
+      properties:
+        time:
+          type: string
+          description: Local time of the Pi, ISO 8601 without offset
+          example: "2026-10-01T14:30:00"
+        timezone:
+          type: string
+          example: CEST
+
     Segment:
       type: object
       required: [type]

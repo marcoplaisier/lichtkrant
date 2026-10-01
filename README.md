@@ -4,7 +4,8 @@ Raspberry Pi controller for a "Lichtkrant" (Dutch: light newspaper) — a scroll
 
 ## Features
 
-- **Multi-page web UI** — Dashboard, Text management, and Queue management on separate pages
+- **Multi-page web UI** — Dashboard, Text management, Queue management, and Configuration on separate pages
+- **Manual clock setting** — set the Pi's date and time from the Configuration page when there is no internet
 - **Display queue** — Drag-and-drop ordering of texts for playback; a text can appear multiple times
 - **Per-segment styling** — Multiple colors, pause, blink, and flash effects within a single message
 - **Template variables** — `{{date}}`, `{{time}}`, and `{{symbol:AAPL}}` resolved at display time
@@ -65,6 +66,8 @@ Full OpenAPI 3.1 spec: [`docs/openapi.yaml`](docs/openapi.yaml)
 | `/api/queue` | PUT | Bulk reorder (`{entries: [{id, position}]}`) |
 | `/api/queue/<id>` | DELETE | Remove a queue entry |
 | `/api/send` | POST | Send a message directly to display |
+| `/api/system/time` | GET | Get the Pi's current local time and timezone |
+| `/api/system/time` | PUT | Set the system clock (`{time: "2026-10-01T14:30:00"}`, local time) |
 | `/colors` | GET | List available colors |
 | `/fonts` | GET | List available fonts |
 
@@ -77,6 +80,8 @@ Use these placeholders in text segments — they're resolved each time the dispa
 | `{{date}}` | Local date | `26 Mar 2026` |
 | `{{time}}` | Local time | `14:30` |
 | `{{symbol:AAPL}}` | Stock price via Yahoo Finance | `AAPL 198.50` |
+
+`{{date}}` and `{{time}}` use the Pi's system clock. Without internet the Pi cannot sync its clock, so set it on the **Configuration** page (`/config/`). The service must run as root for this. A Pi without a battery-backed real-time clock loses the exact time on power loss, so set it again after a restart.
 
 Stock prices are cached for 5 minutes. Failed lookups show `SYMBOL:N/A` and are cached for 1 minute.
 

@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% set active_page = 'config' %}
+
+{% block title %}Lichtkrant - Configuration{% endblock %}
+
+{% block extra_style %}
+        input[type="datetime-local"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #333;
+            border-radius: 8px;
+            background: #16213e;
+            color: #fff;
+            font-size: 16px;
+            color-scheme: dark;
+        }
+        input[type="datetime-local"]:focus {
+            outline: none;
+            border-color: #00ff88;
+        }
+        .clock {
+            font-family: monospace;
+            font-size: 1.6em;
+            color: #00ff88;
+        }
+        .hint { color: #9ca3af; font-size: 13px; }
+        .button-row { display: flex; gap: 10px; flex-wrap: wrap; }
+        .button-row button { flex: 1; min-width: 180px; }
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2 style="margin-top: 0;">Date and Time</h2>
+    <p class="hint">
+        Without internet the Lichtkrant cannot fetch the time itself.
+        The <code>{{ '{{date}}' }}</code> and <code>{{ '{{time}}' }}</code>
+        template variables use the clock shown here.
+    </p>
+    <label>Current time on the Lichtkrant</label>
+    <div class="clock" id="piClock">Loading...</div>
+    <div class="hint" id="piTimezone"></div>
+</div>
+
+<form id="timeForm">
+    <div class="form-group">
+        <label for="newTime">New date and time</label>
+        <input type="datetime-local" id="newTime" name="newTime" step="1" required>
+    </div>
+    <div class="button-row">
+        <button type="button" class="btn-secondary" id="useDeviceTime">Use this device's time</button>
+        <button type="submit">Set date and time</button>
+    </div>
+</form>
+
+<div id="status" class="status" style="display: none;"></div>
+{% endblock %}
+
+{% block extra_script %}
+    const pad = (n) => String(n).padStart(2, '0');
+
+    // Format a Date as local wall-clock time: YYYY-MM-DDTHH:MM:SS
+    function toLocalIso(date) {
+        return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}` +
+            `T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+    }
+
+    // Difference between the Pi's wall clock and this device's wall clock (ms)
+    let piOffsetMs = null;
+
+    function showPiTime(info) {
+        // Parsed as local wall-clock time; only the difference is used
+        piOffsetMs = new Date(info.time).getTime() - Date.now();
+        document.getElementById('piTimezone').textContent =
+            info.timezone ? `Timezone: ${info.timezone}` : '';
+        tick();
+    }
+
+    function tick() {
+        if (piOffsetMs === null) return;
+        const piNow = new Date(Date.now() + piOffsetMs);
+        document.getElementById('piClock').textContent =
+            toLocalIso(piNow).replace('T', ' ');
+    }
+
+    async function loadPiTime() {
+        try {
+            const response = await fetch('/api/system/time');
+            showPiTime(await response.json());
+        } catch (err) {
+            document.getElementById('piClock').textContent = 'Unavailable';
+        }
+    }
+
+    function fillDeviceTime() {
+        document.getElementById('newTime').value = toLocalIso(new Date());
+    }
+
+    document.getElementById('useDeviceTime').addEventListener('click', fillDeviceTime);
+
+    document.getElementById('timeForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const status = document.getElementById('status');
+        try {
+            const response = await fetch('/api/system/time', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ time: document.getElementById('newTime').value })
+            });
+            const result = await response.json();
+            if (response.ok) showPiTime(result);
+            showStatus(status, response.ok, response.ok ? 'Date and time set' : result.error);
+        } catch (err) {
+            showStatus(status, false, 'Connection error');
+        }
+    });
+
+    fillDeviceTime();
+    loadPiTime();
+    setInterval(tick, 1000);
+{% endblock %}

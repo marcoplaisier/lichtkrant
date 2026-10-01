@@ -109,11 +109,33 @@
         }
         .status.success { background: #00ff8833; color: #00ff88; }
         .status.error { background: #ff006633; color: #ff6666; }
-        .speed-value {
-            text-align: center;
-            color: #00ff88;
-            font-family: monospace;
+        .speed-presets { display: flex; gap: 6px; flex-wrap: wrap; }
+        .speed-preset {
+            flex: 1;
+            min-width: 90px;
+            padding: 12px 6px;
+            background: #16213e;
+            border: 2px solid #333;
+            color: #aaa;
+            font-size: 14px;
         }
+        .speed-preset.selected {
+            background: #00ff88;
+            border-color: #00ff88;
+            color: #1a1a2e;
+        }
+        .speed-advanced-toggle {
+            margin-top: 8px;
+            padding: 4px 0;
+            background: none;
+            color: #9ca3af;
+            font-size: 13px;
+            font-weight: normal;
+            text-decoration: underline;
+        }
+        .speed-advanced { margin-top: 8px; }
+        .speed-advanced input { width: 100px; }
+        .speed-hint { color: #9ca3af; font-size: 13px; margin-left: 8px; }
         .badge {
             display: inline-block;
             padding: 2px 8px;
@@ -183,6 +205,76 @@
             el.className = 'status ' + (success ? 'success' : 'error');
             el.textContent = message;
             setTimeout(() => { el.style.display = 'none'; }, 3000);
+        }
+
+        // Scroll speed presets. The display takes a delay between scroll
+        // steps (1 = fastest, 255 = slowest), so faster presets are lower.
+        const SPEED_PRESETS = [
+            { label: 'Very slow', value: 128 },
+            { label: 'Slow', value: 64 },
+            { label: 'Normal', value: 32 },
+            { label: 'Fast', value: 16 },
+            { label: 'Very fast', value: 8 },
+        ];
+        const DEFAULT_SPEED = 32;
+
+        function speedLabel(value) {
+            const preset = SPEED_PRESETS.find(p => p.value === value);
+            return preset ? preset.label : `Custom (${value})`;
+        }
+
+        // Render a speed picker into `container`. The raw value lives in a
+        // hidden input with id `inputId`. Returns { set(value) }.
+        function initSpeedPicker(container, inputId) {
+            container.innerHTML = `
+                <input type="hidden" id="${inputId}" name="speed" value="${DEFAULT_SPEED}">
+                <div class="speed-presets" role="group" aria-label="Scroll speed">
+                    ${SPEED_PRESETS.map(p =>
+                        `<button type="button" class="speed-preset" data-value="${p.value}">${p.label}</button>`
+                    ).join('')}
+                </div>
+                <button type="button" class="speed-advanced-toggle">Advanced</button>
+                <div class="speed-advanced" style="display: none;">
+                    <input type="number" min="1" max="255" value="${DEFAULT_SPEED}" aria-label="Exact scroll delay">
+                    <span class="speed-hint">Exact delay: 1 is fastest, 255 is slowest</span>
+                </div>
+            `;
+            const hidden = container.querySelector('input[type="hidden"]');
+            const buttons = container.querySelectorAll('.speed-preset');
+            const advanced = container.querySelector('.speed-advanced');
+            const exact = advanced.querySelector('input');
+
+            function highlight(value) {
+                buttons.forEach(b => {
+                    const selected = parseInt(b.dataset.value) === value;
+                    b.classList.toggle('selected', selected);
+                    b.setAttribute('aria-pressed', selected);
+                });
+            }
+
+            function set(value) {
+                hidden.value = value;
+                exact.value = value;
+                highlight(value);
+                // Show the exact value when it matches no preset
+                const isPreset = SPEED_PRESETS.some(p => p.value === value);
+                if (!isPreset) advanced.style.display = 'block';
+            }
+
+            buttons.forEach(b => b.addEventListener('click', () => set(parseInt(b.dataset.value))));
+            container.querySelector('.speed-advanced-toggle').addEventListener('click', () => {
+                advanced.style.display = advanced.style.display === 'none' ? 'block' : 'none';
+            });
+            exact.addEventListener('input', () => {
+                const value = parseInt(exact.value);
+                if (value >= 1 && value <= 255) {
+                    hidden.value = value;
+                    highlight(value);
+                }
+            });
+
+            set(DEFAULT_SPEED);
+            return { set };
         }
 
         function renderSegmentBadges(segments) {

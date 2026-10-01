@@ -58,9 +58,8 @@
     </div>
 
     <div class="form-group">
-        <label for="speed">Scroll Speed</label>
-        <input type="range" id="speed" name="speed" min="1" max="255" value="32">
-        <div class="speed-value" id="speedValue">32</div>
+        <label>Scroll Speed</label>
+        <div id="speedPicker"></div>
     </div>
 
     <button type="submit" class="btn-full">Send to Display</button>
@@ -88,10 +87,7 @@
     }
     loadQueueStatus();
 
-    // Speed slider
-    document.getElementById('speed').addEventListener('input', (e) => {
-        document.getElementById('speedValue').textContent = e.target.value;
-    });
+    initSpeedPicker(document.getElementById('speedPicker'), 'speed');
 
     // Direct send form
     document.getElementById('messageForm').addEventListener('submit', async (e) => {

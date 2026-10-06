@@ -6,6 +6,7 @@ import json
 import sqlite3
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 from lichtkrant.db.models import QueueEntry, Text, TextSegment
 
@@ -277,7 +278,7 @@ class TextRepository:
             conn.commit()
             return cursor.rowcount > 0
 
-    def reorder_queue(self, entries: list[dict]) -> bool:
+    def reorder_queue(self, entries: list[dict[str, Any]]) -> bool:
         """Bulk update queue positions. entries: [{id, position}, ...]"""
         with self._connect() as conn:
             for entry in entries:

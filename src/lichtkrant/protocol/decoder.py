@@ -110,7 +110,7 @@ def decode(data: bytes) -> list[str]:
                 i += 4
         else:
             # Regular text: collect consecutive char+color pairs
-            text_chars = []
+            text_chars: list[str] = []
             current_color = None
             while i + 1 < len(content) and content[i] != CONTROL_CHAR:
                 char = chr(content[i])

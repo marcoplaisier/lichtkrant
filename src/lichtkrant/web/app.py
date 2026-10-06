@@ -155,26 +155,32 @@ def create_app(
                     color = seg.get("color", "WHITE").upper()
                     segments.append(TextSegment(text=text, color=color))
                 elif seg_type == "pause":
-                    segments.append(TextSegment(
-                        type="pause",
-                        duration=int(seg.get("duration", 1)),
-                    ))
+                    segments.append(
+                        TextSegment(
+                            type="pause",
+                            duration=int(seg.get("duration", 1)),
+                        )
+                    )
                 elif seg_type in ("fast_blink", "slow_blink"):
-                    segments.append(TextSegment(
-                        type=seg_type,
-                        times=int(seg.get("times", 1)),
-                    ))
+                    segments.append(
+                        TextSegment(
+                            type=seg_type,
+                            times=int(seg.get("times", 1)),
+                        )
+                    )
                 elif seg_type == "flash":
                     text = seg.get("text", "")
                     if not text:
                         continue
-                    segments.append(TextSegment(
-                        type="flash",
-                        text=text,
-                        color=seg.get("color", "WHITE").upper(),
-                        duration=int(seg.get("duration", 1)),
-                        scroll_off=bool(seg.get("scroll_off", False)),
-                    ))
+                    segments.append(
+                        TextSegment(
+                            type="flash",
+                            text=text,
+                            color=seg.get("color", "WHITE").upper(),
+                            duration=int(seg.get("duration", 1)),
+                            scroll_off=bool(seg.get("scroll_off", False)),
+                        )
+                    )
             return segments
         # Legacy format: single content + color
         content = data.get("content", "")

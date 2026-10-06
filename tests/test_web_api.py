@@ -112,27 +112,19 @@ class TestDirectSend:
         assert response.status_code == 400
 
     def test_send_invalid_color(self, client):
-        response = client.post(
-            "/api/send", json={"text": "Hi", "color": "NOPE"}
-        )
+        response = client.post("/api/send", json={"text": "Hi", "color": "NOPE"})
         assert response.status_code == 400
 
     def test_send_invalid_background(self, client):
-        response = client.post(
-            "/api/send", json={"text": "Hi", "background": "NOPE"}
-        )
+        response = client.post("/api/send", json={"text": "Hi", "background": "NOPE"})
         assert response.status_code == 400
 
     def test_send_invalid_font(self, client):
-        response = client.post(
-            "/api/send", json={"text": "Hi", "font": "NOPE"}
-        )
+        response = client.post("/api/send", json={"text": "Hi", "font": "NOPE"})
         assert response.status_code == 400
 
     def test_send_invalid_speed(self, client):
-        response = client.post(
-            "/api/send", json={"text": "Hi", "speed": 0}
-        )
+        response = client.post("/api/send", json={"text": "Hi", "speed": 0})
         assert response.status_code == 400
 
 
@@ -165,23 +157,32 @@ class TestTextCRUD:
         assert response.status_code == 400
 
     def test_create_text_invalid_color(self, client):
-        response = client.post("/api/texts", json={
-            "segments": [{"type": "text", "text": "Hi", "color": "NOPE"}],
-        })
+        response = client.post(
+            "/api/texts",
+            json={
+                "segments": [{"type": "text", "text": "Hi", "color": "NOPE"}],
+            },
+        )
         assert response.status_code == 400
 
     def test_create_text_invalid_speed(self, client):
-        response = client.post("/api/texts", json={
-            "segments": [{"type": "text", "text": "Hi", "color": "WHITE"}],
-            "speed": 999,
-        })
+        response = client.post(
+            "/api/texts",
+            json={
+                "segments": [{"type": "text", "text": "Hi", "color": "WHITE"}],
+                "speed": 999,
+            },
+        )
         assert response.status_code == 400
 
     def test_create_text_legacy_format(self, client):
-        response = client.post("/api/texts", json={
-            "content": "Legacy text",
-            "color": "RED",
-        })
+        response = client.post(
+            "/api/texts",
+            json={
+                "content": "Legacy text",
+                "color": "RED",
+            },
+        )
         assert response.status_code == 201
         text = response.get_json()["text"]
         assert text["content"] == "Legacy text"
@@ -261,9 +262,12 @@ class TestTextCRUD:
 
 class TestQueueAPI:
     def _create_text(self, client):
-        response = client.post("/api/texts", json={
-            "segments": [{"type": "text", "text": "Test", "color": "WHITE"}],
-        })
+        response = client.post(
+            "/api/texts",
+            json={
+                "segments": [{"type": "text", "text": "Test", "color": "WHITE"}],
+            },
+        )
         return response.get_json()["text"]["id"]
 
     def test_get_queue_empty(self, client):
@@ -320,12 +324,15 @@ class TestQueueAPI:
         e2 = client.post("/api/queue", json={"text_id": t2}).get_json()["entry"]
 
         # Swap order
-        response = client.put("/api/queue", json={
-            "entries": [
-                {"id": e1["id"], "position": 20},
-                {"id": e2["id"], "position": 10},
-            ]
-        })
+        response = client.put(
+            "/api/queue",
+            json={
+                "entries": [
+                    {"id": e1["id"], "position": 20},
+                    {"id": e2["id"], "position": 10},
+                ]
+            },
+        )
         assert response.status_code == 200
 
         queue = client.get("/api/queue").get_json()["queue"]
@@ -345,9 +352,7 @@ class TestQueueAPI:
         assert response.status_code == 400
 
     def test_reorder_queue_missing_fields(self, client):
-        response = client.put("/api/queue", json={
-            "entries": [{"id": 1}]
-        })
+        response = client.put("/api/queue", json={"entries": [{"id": 1}]})
         assert response.status_code == 400
 
     def test_delete_text_removes_queue_entries(self, client):

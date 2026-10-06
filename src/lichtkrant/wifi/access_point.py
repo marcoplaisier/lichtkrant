@@ -183,9 +183,7 @@ class AccessPoint:
             ],
             capture_output=True,
         )
-        logger.info(
-            "Captive portal: DNS → %s, port 80 → %d", gateway_ip, web_port
-        )
+        logger.info("Captive portal: DNS → %s, port 80 → %d", gateway_ip, web_port)
 
     def _teardown_captive_portal(self) -> None:
         """Remove DNS interception and port 80 redirect."""

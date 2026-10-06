@@ -90,9 +90,7 @@ class TestTextRepository:
         assert result is True
         assert repository.get(created.id) is None  # type: ignore[arg-type]
 
-    def test_delete_nonexistent_returns_false(
-        self, repository: TextRepository
-    ) -> None:
+    def test_delete_nonexistent_returns_false(self, repository: TextRepository) -> None:
         """Test that deleting a non-existent ID returns False."""
         assert repository.delete(999) is False
 
@@ -165,8 +163,7 @@ class TestTextRepository:
             # Active column should be gone
             with repo._connect() as c:
                 columns = [
-                    row[1]
-                    for row in c.execute("PRAGMA table_info(texts)").fetchall()
+                    row[1] for row in c.execute("PRAGMA table_info(texts)").fetchall()
                 ]
                 assert "active" not in columns
 
@@ -242,8 +239,11 @@ class TestTextRepository:
                 TextSegment(type="fast_blink", times=3),
                 TextSegment(type="slow_blink", times=5),
                 TextSegment(
-                    type="flash", text="SALE!", color="RED",
-                    duration=4, scroll_off=True,
+                    type="flash",
+                    text="SALE!",
+                    color="RED",
+                    duration=4,
+                    scroll_off=True,
                 ),
             ],
             background="NONE",
@@ -377,10 +377,12 @@ class TestQueue:
         e2 = repository.add_to_queue(t2.id)
 
         # Swap positions
-        repository.reorder_queue([
-            {"id": e1.id, "position": 20},
-            {"id": e2.id, "position": 10},
-        ])
+        repository.reorder_queue(
+            [
+                {"id": e1.id, "position": 20},
+                {"id": e2.id, "position": 10},
+            ]
+        )
 
         queue = repository.get_queue()
         assert len(queue) == 2

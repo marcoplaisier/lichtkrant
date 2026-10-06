@@ -92,29 +92,21 @@ def decode(data: bytes) -> list[str]:
                         i += 2
                         break
                     flash_text.append(chr(content[i]))
-                    flash_color = _COLORS.get(
-                        content[i + 1], f"0x{content[i + 1]:02X}"
-                    )
+                    flash_color = _COLORS.get(content[i + 1], f"0x{content[i + 1]:02X}")
                     i += 2
                 text = "".join(flash_text)
                 color_str = f" color={flash_color}" if flash_color else ""
-                lines.append(
-                    f'Flash "{text}"{color_str} {hold}s {mode}'
-                )
+                lines.append(f'Flash "{text}"{color_str} {hold}s {mode}')
             elif code == ControlCode.LITERAL_HASH:
                 # Escaped '#': next two bytes are CONTROL_CHAR, color
                 if i + 3 < len(content):
-                    color = _COLORS.get(
-                        content[i + 3], f"0x{content[i + 3]:02X}"
-                    )
+                    color = _COLORS.get(content[i + 3], f"0x{content[i + 3]:02X}")
                     lines.append(f'Text "#" color={color}')
                     i += 4
                 else:
                     i += 2
             else:
-                lines.append(
-                    f"Unknown control 0x{code:02X} at offset {i}"
-                )
+                lines.append(f"Unknown control 0x{code:02X} at offset {i}")
                 i += 4
         else:
             # Regular text: collect consecutive char+color pairs
@@ -122,17 +114,13 @@ def decode(data: bytes) -> list[str]:
             current_color = None
             while i + 1 < len(content) and content[i] != CONTROL_CHAR:
                 char = chr(content[i])
-                color = _COLORS.get(
-                    content[i + 1], f"0x{content[i + 1]:02X}"
-                )
+                color = _COLORS.get(content[i + 1], f"0x{content[i + 1]:02X}")
                 if current_color is None:
                     current_color = color
                 if color != current_color:
                     # Flush current run
                     text = "".join(text_chars)
-                    lines.append(
-                        f'Text "{text}" color={current_color}'
-                    )
+                    lines.append(f'Text "{text}" color={current_color}')
                     text_chars = []
                     current_color = color
                 text_chars.append(char)
@@ -145,8 +133,7 @@ def decode(data: bytes) -> list[str]:
     # Terminator check
     if data[-2:] != b"\xaa\xaa":
         lines.append(
-            f"Warning: unexpected terminator "
-            f"0x{data[-2]:02X} 0x{data[-1]:02X}"
+            f"Warning: unexpected terminator 0x{data[-2]:02X} 0x{data[-1]:02X}"
         )
 
     return lines

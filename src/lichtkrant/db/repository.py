@@ -74,8 +74,7 @@ class TextRepository:
                 "SELECT id FROM texts WHERE active = 1 ORDER BY id"
             ).fetchall()
             active_ids = [
-                (row["id"], (i + 1) * 10)
-                for i, row in enumerate(active_rows)
+                (row["id"], (i + 1) * 10) for i, row in enumerate(active_rows)
             ]
 
             # Drop the active column by recreating the table

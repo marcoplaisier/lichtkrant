@@ -32,9 +32,9 @@ def client(repo):
 
 
 class TestBuilder:
-    def test_default_is_brightest(self):
+    def test_default_is_dimmest(self):
         msg = MessageBuilder().add_text("A").build()
-        assert msg[BRIGHTNESS_BYTE] == 4
+        assert msg[BRIGHTNESS_BYTE] == 1
         assert msg[SPARE_BYTE] == 0x00
 
     @pytest.mark.parametrize("level", [1, 2, 3, 4])
@@ -55,7 +55,7 @@ class TestBuilder:
 
 class TestRepository:
     def test_default(self, repo):
-        assert repo.get_brightness() == 4
+        assert repo.get_brightness() == 1
 
     def test_set_and_persist(self, repo):
         repo.set_brightness(2)
@@ -73,13 +73,13 @@ class TestRepository:
 
     def test_corrupt_value_falls_back_to_default(self, repo):
         repo._set_setting("brightness", "bright")
-        assert repo.get_brightness() == 4
+        assert repo.get_brightness() == 1
 
 
 class TestDispatcher:
     def test_message_uses_stored_brightness(self, repo):
         config = Config()
-        repo.set_brightness(1)
+        repo.set_brightness(3)
         dispatcher = TextDispatcher(config, repo, SpySPIDriver(config))
         text = Text(
             id=None,
@@ -88,14 +88,14 @@ class TestDispatcher:
             font="KONGTEXT",
             speed=32,
         )
-        assert dispatcher._build_message(text)[BRIGHTNESS_BYTE] == 1
+        assert dispatcher._build_message(text)[BRIGHTNESS_BYTE] == 3
 
 
 class TestApi:
     def test_get_default(self, client):
         response = client.get("/api/settings/brightness")
         assert response.status_code == 200
-        assert response.get_json() == {"brightness": 4, "min": 1, "max": 4}
+        assert response.get_json() == {"brightness": 1, "min": 1, "max": 4}
 
     def test_set(self, client, repo):
         response = client.put("/api/settings/brightness", json={"brightness": 2})
@@ -111,7 +111,7 @@ class TestApi:
     def test_set_invalid(self, client, repo, payload):
         response = client.put("/api/settings/brightness", json=payload)
         assert response.status_code == 400
-        assert repo.get_brightness() == 4
+        assert repo.get_brightness() == 1
 
     def test_no_repository(self):
         client = create_app(Config()).test_client()

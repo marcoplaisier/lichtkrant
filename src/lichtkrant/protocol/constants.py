@@ -52,7 +52,7 @@ class ControlCode(IntEnum):
 # Display brightness, sent in the first spare header byte (1 = dimmest)
 MIN_BRIGHTNESS = 1
 MAX_BRIGHTNESS = 4
-DEFAULT_BRIGHTNESS = MAX_BRIGHTNESS
+DEFAULT_BRIGHTNESS = MIN_BRIGHTNESS
 
 # Protocol markers
 HEADER_START = 0xFE

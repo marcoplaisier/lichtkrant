@@ -30,7 +30,8 @@ Raspberry Pi software to control a "Lichtkrant" (Dutch: light newspaper) - a scr
 
 The display has no brightness control of its own, so the Pi sends it in the
 first spare header byte: `0x01` (dimmest) to `0x04` (brightest). It is a global
-setting stored in the database and set on the Configuration page. Default is 4.
+setting stored in the database and set on the Configuration page. Default is 1, because
+full brightness is very bright.
 
 ### Color Codes
 

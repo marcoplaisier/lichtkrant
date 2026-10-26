@@ -13,7 +13,7 @@ class TestDecode:
         msg = MessageBuilder(speed=32).add_text("Hi", Color.WHITE).build()
         lines = decode(msg)
 
-        assert lines[0] == "Header: bg=NONE speed=32 font=KONGTEXT"
+        assert lines[0] == "Header: bg=NONE speed=32 font=KONGTEXT brightness=1"
         assert 'Text "Hi" color=WHITE' in lines[1]
 
     def test_colored_text(self) -> None:

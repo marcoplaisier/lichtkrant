@@ -6,6 +6,7 @@ Raspberry Pi controller for a "Lichtkrant" (Dutch: light newspaper) — a scroll
 
 - **Multi-page web UI** — Dashboard, Text management, Queue management, and Configuration on separate pages
 - **Manual clock setting** — set the Pi's date and time from the Configuration page when there is no internet
+- **Display brightness** — choose one of four brightness levels on the Configuration page; it is sent in the message header
 - **Display queue** — Drag-and-drop ordering of texts for playback; a text can appear multiple times
 - **Per-segment styling** — Multiple colors, pause, blink, and flash effects within a single message
 - **Template variables** — `{{date}}`, `{{time}}`, and `{{symbol:AAPL}}` resolved at display time
@@ -68,6 +69,8 @@ Full OpenAPI 3.1 spec: [`docs/openapi.yaml`](docs/openapi.yaml)
 | `/api/send` | POST | Send a message directly to display |
 | `/api/system/time` | GET | Get the Pi's current local time and timezone |
 | `/api/system/time` | PUT | Set the system clock (`{time: "2026-10-01T14:30:00"}`, local time) |
+| `/api/settings/brightness` | GET | Get the display brightness (1-4) |
+| `/api/settings/brightness` | PUT | Set the display brightness (`{brightness: 3}`) |
 | `/colors` | GET | List available colors |
 | `/fonts` | GET | List available fonts |
 

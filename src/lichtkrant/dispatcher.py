@@ -43,6 +43,7 @@ class TextDispatcher:
             background=BackgroundColor[text.background],
             speed=text.speed,
             font=Font[text.font],
+            brightness=self.repository.get_brightness(),
         )
         for segment in text.segments:
             match segment.type:

@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from lichtkrant.db import TextRepository
     from lichtkrant.spi import SPIDriver
 
+from lichtkrant import system_time
 from lichtkrant.db.models import Text, TextSegment
 from lichtkrant.protocol import Color, Font, MessageBuilder
 from lichtkrant.protocol.constants import BackgroundColor
@@ -60,6 +61,41 @@ def create_app(
     def queue_page() -> str:
         """Queue management page."""
         return render_template("queue.html")
+
+    @app.route("/config/")
+    def config_page() -> str:
+        """Configuration page (system date and time)."""
+        return render_template("config.html")
+
+    # --- System time ---
+
+    @app.route("/api/system/time", methods=["GET"])
+    def api_get_system_time() -> tuple[dict, int]:
+        """Return the current system time of the Pi."""
+        return system_time.get_time_info(), 200
+
+    @app.route("/api/system/time", methods=["PUT"])
+    def api_set_system_time() -> tuple[dict, int]:
+        """Set the system time of the Pi."""
+        data = request.get_json(silent=True)
+        if not isinstance(data, dict) or "time" not in data:
+            return {"error": "time is required"}, 400
+
+        try:
+            new_time = system_time.parse_time(data["time"])
+        except ValueError as e:
+            return {"error": str(e)}, 400
+
+        try:
+            system_time.set_system_time(new_time)
+        except PermissionError:
+            return {
+                "error": "Not allowed to set the system time (service must run as root)"
+            }, 403
+        except OSError as e:
+            return {"error": f"Failed to set system time: {e}"}, 500
+
+        return system_time.get_time_info(), 200
 
     # --- Direct send ---
 

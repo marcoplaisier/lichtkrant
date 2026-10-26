@@ -77,12 +77,12 @@ def create_app(
     # --- System time ---
 
     @app.route("/api/system/time", methods=["GET"])
-    def api_get_system_time() -> tuple[dict, int]:
+    def api_get_system_time() -> tuple[dict[str, Any], int]:
         """Return the current system time of the Pi."""
         return system_time.get_time_info(), 200
 
     @app.route("/api/system/time", methods=["PUT"])
-    def api_set_system_time() -> tuple[dict, int]:
+    def api_set_system_time() -> tuple[dict[str, Any], int]:
         """Set the system time of the Pi."""
         data = request.get_json(silent=True)
         if not isinstance(data, dict) or "time" not in data:
@@ -106,11 +106,11 @@ def create_app(
 
     # --- Display brightness ---
 
-    def _brightness_response(brightness: int) -> dict:
+    def _brightness_response(brightness: int) -> dict[str, Any]:
         return {"brightness": brightness, "min": MIN_BRIGHTNESS, "max": MAX_BRIGHTNESS}
 
     @app.route("/api/settings/brightness", methods=["GET"])
-    def api_get_brightness() -> tuple[dict, int]:
+    def api_get_brightness() -> tuple[dict[str, Any], int]:
         """Return the display brightness."""
         repo = app.config.get("REPOSITORY")
         if not repo:
@@ -118,7 +118,7 @@ def create_app(
         return _brightness_response(repo.get_brightness()), 200
 
     @app.route("/api/settings/brightness", methods=["PUT"])
-    def api_set_brightness() -> tuple[dict, int]:
+    def api_set_brightness() -> tuple[dict[str, Any], int]:
         """Set the display brightness, used from the next message on."""
         repo = app.config.get("REPOSITORY")
         if not repo:

@@ -105,8 +105,14 @@ class TestApi:
 
     @pytest.mark.parametrize(
         "payload",
-        [{}, {"brightness": 0}, {"brightness": 5}, {"brightness": "3"},
-         {"brightness": 2.5}, {"brightness": True}],
+        [
+            {},
+            {"brightness": 0},
+            {"brightness": 5},
+            {"brightness": "3"},
+            {"brightness": 2.5},
+            {"brightness": True},
+        ],
     )
     def test_set_invalid(self, client, repo, payload):
         response = client.put("/api/settings/brightness", json=payload)

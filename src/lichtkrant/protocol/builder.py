@@ -4,8 +4,11 @@ from __future__ import annotations
 
 from lichtkrant.protocol.constants import (
     CONTROL_CHAR,
+    DEFAULT_BRIGHTNESS,
     FLASH_END_MARKER,
     HEADER_START,
+    MAX_BRIGHTNESS,
+    MIN_BRIGHTNESS,
     TERMINATOR,
     BackgroundColor,
     Color,
@@ -22,13 +25,19 @@ class MessageBuilder:
         background: BackgroundColor = BackgroundColor.NONE,
         speed: int = 0x20,
         font: Font = Font.KONGTEXT,
+        brightness: int = DEFAULT_BRIGHTNESS,
     ) -> None:
         if not 0x01 <= speed <= 0xFF:
             raise ValueError("Speed must be between 0x01 and 0xFF")
+        if not MIN_BRIGHTNESS <= brightness <= MAX_BRIGHTNESS:
+            raise ValueError(
+                f"Brightness must be between {MIN_BRIGHTNESS} and {MAX_BRIGHTNESS}"
+            )
 
         self._background = background
         self._speed = speed
         self._font = font
+        self._brightness = brightness
         self._content: list[int] = []
 
     def add_text(self, text: str, color: Color = Color.WHITE) -> MessageBuilder:
@@ -100,7 +109,7 @@ class MessageBuilder:
             self._background,
             self._speed,
             self._font,
-            0x00,
+            self._brightness,
             0x00,
         ])
         return header + bytes(self._content) + TERMINATOR

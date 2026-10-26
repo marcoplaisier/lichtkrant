@@ -26,6 +26,20 @@
         .hint { color: #9ca3af; font-size: 13px; }
         .button-row { display: flex; gap: 10px; flex-wrap: wrap; }
         .button-row button { flex: 1; min-width: 180px; }
+        .brightness-levels { display: flex; gap: 6px; }
+        .brightness-level {
+            flex: 1;
+            padding: 12px 6px;
+            background: #16213e;
+            border: 2px solid #333;
+            color: #aaa;
+            font-size: 14px;
+        }
+        .brightness-level.selected {
+            background: #00ff88;
+            border-color: #00ff88;
+            color: #1a1a2e;
+        }
 {% endblock %}
 
 {% block content %}
@@ -53,6 +67,21 @@
 </form>
 
 <div id="status" class="status" style="display: none;"></div>
+
+<div class="card" style="margin-top: 30px;">
+    <h2 style="margin-top: 0;">Display Brightness</h2>
+    <p class="hint">
+        The display has no brightness control of its own. The new level is
+        used from the next text the display shows.
+    </p>
+    <div class="brightness-levels" id="brightnessLevels" role="group" aria-label="Display brightness">
+        <button type="button" class="brightness-level" data-level="1">1 Dimmest</button>
+        <button type="button" class="brightness-level" data-level="2">2</button>
+        <button type="button" class="brightness-level" data-level="3">3</button>
+        <button type="button" class="brightness-level" data-level="4">4 Brightest</button>
+    </div>
+    <div id="brightnessStatus" class="status" style="display: none;"></div>
+</div>
 {% endblock %}
 
 {% block extra_script %}
@@ -114,6 +143,45 @@
         }
     });
 
+    // --- Display brightness ---
+    const brightnessButtons = document.querySelectorAll('.brightness-level');
+
+    function showBrightness(level) {
+        brightnessButtons.forEach(b => {
+            const selected = parseInt(b.dataset.level) === level;
+            b.classList.toggle('selected', selected);
+            b.setAttribute('aria-pressed', selected);
+        });
+    }
+
+    async function loadBrightness() {
+        try {
+            const response = await fetch('/api/settings/brightness');
+            const result = await response.json();
+            if (response.ok) showBrightness(result.brightness);
+        } catch (err) {
+            // Leave all buttons unselected when the setting is unavailable
+        }
+    }
+
+    brightnessButtons.forEach(b => b.addEventListener('click', async () => {
+        const status = document.getElementById('brightnessStatus');
+        try {
+            const response = await fetch('/api/settings/brightness', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ brightness: parseInt(b.dataset.level) })
+            });
+            const result = await response.json();
+            if (response.ok) showBrightness(result.brightness);
+            showStatus(status, response.ok,
+                response.ok ? `Brightness set to ${result.brightness}` : result.error);
+        } catch (err) {
+            showStatus(status, false, 'Connection error');
+        }
+    }));
+
+    loadBrightness();
     fillDeviceTime();
     loadPiTime();
     setInterval(tick, 1000);

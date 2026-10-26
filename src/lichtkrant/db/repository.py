@@ -8,6 +8,11 @@ from datetime import datetime
 from pathlib import Path
 
 from lichtkrant.db.models import QueueEntry, Text, TextSegment
+from lichtkrant.protocol.constants import (
+    DEFAULT_BRIGHTNESS,
+    MAX_BRIGHTNESS,
+    MIN_BRIGHTNESS,
+)
 
 
 class TextRepository:
@@ -41,6 +46,12 @@ class TextRepository:
             conn.execute(
                 "CREATE INDEX IF NOT EXISTS idx_queue_position ON queue(position)"
             )
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS settings (
+                    key TEXT PRIMARY KEY,
+                    value TEXT NOT NULL
+                )
+            """)
             conn.commit()
             self._migrate(conn)
 
@@ -105,6 +116,45 @@ class TextRepository:
                     (text_id, position),
                 )
             conn.commit()
+
+    # --- Settings ---
+
+    def _get_setting(self, key: str) -> str | None:
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT value FROM settings WHERE key = ?", (key,)
+            ).fetchone()
+        return row["value"] if row else None
+
+    def _set_setting(self, key: str, value: str) -> None:
+        with self._connect() as conn:
+            conn.execute(
+                "INSERT INTO settings (key, value) VALUES (?, ?) "
+                "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+                (key, value),
+            )
+            conn.commit()
+
+    def get_brightness(self) -> int:
+        """Return the display brightness (1-4), or the default if unset."""
+        value = self._get_setting("brightness")
+        if value is None:
+            return DEFAULT_BRIGHTNESS
+        try:
+            brightness = int(value)
+        except ValueError:
+            return DEFAULT_BRIGHTNESS
+        if not MIN_BRIGHTNESS <= brightness <= MAX_BRIGHTNESS:
+            return DEFAULT_BRIGHTNESS
+        return brightness
+
+    def set_brightness(self, brightness: int) -> None:
+        """Store the display brightness (1-4)."""
+        if not MIN_BRIGHTNESS <= brightness <= MAX_BRIGHTNESS:
+            raise ValueError(
+                f"Brightness must be between {MIN_BRIGHTNESS} and {MAX_BRIGHTNESS}"
+            )
+        self._set_setting("brightness", str(brightness))
 
     def _connect(self) -> sqlite3.Connection:
         """Create a new connection with WAL mode."""

@@ -14,7 +14,12 @@ if TYPE_CHECKING:
 from lichtkrant import system_time
 from lichtkrant.db.models import Text, TextSegment
 from lichtkrant.protocol import Color, Font, MessageBuilder
-from lichtkrant.protocol.constants import BackgroundColor
+from lichtkrant.protocol.constants import (
+    DEFAULT_BRIGHTNESS,
+    MAX_BRIGHTNESS,
+    MIN_BRIGHTNESS,
+    BackgroundColor,
+)
 
 
 def create_app(
@@ -97,6 +102,43 @@ def create_app(
 
         return system_time.get_time_info(), 200
 
+    # --- Display brightness ---
+
+    def _brightness_response(brightness: int) -> dict:
+        return {"brightness": brightness, "min": MIN_BRIGHTNESS, "max": MAX_BRIGHTNESS}
+
+    @app.route("/api/settings/brightness", methods=["GET"])
+    def api_get_brightness() -> tuple[dict, int]:
+        """Return the display brightness."""
+        repo = app.config.get("REPOSITORY")
+        if not repo:
+            return {"error": "Database not configured"}, 503
+        return _brightness_response(repo.get_brightness()), 200
+
+    @app.route("/api/settings/brightness", methods=["PUT"])
+    def api_set_brightness() -> tuple[dict, int]:
+        """Set the display brightness, used from the next message on."""
+        repo = app.config.get("REPOSITORY")
+        if not repo:
+            return {"error": "Database not configured"}, 503
+
+        data = request.get_json(silent=True)
+        brightness = data.get("brightness") if isinstance(data, dict) else None
+        if (
+            not isinstance(brightness, int)
+            or isinstance(brightness, bool)
+            or not MIN_BRIGHTNESS <= brightness <= MAX_BRIGHTNESS
+        ):
+            return {
+                "error": (
+                    f"brightness must be an integer between "
+                    f"{MIN_BRIGHTNESS} and {MAX_BRIGHTNESS}"
+                )
+            }, 400
+
+        repo.set_brightness(brightness)
+        return _brightness_response(brightness), 200
+
     # --- Direct send ---
 
     @app.route("/api/send", methods=["POST"])
@@ -133,8 +175,13 @@ def create_app(
         if not 1 <= speed <= 255:
             return {"error": "Speed must be between 1 and 255"}, 400
 
+        repo = app.config.get("REPOSITORY")
+        brightness = repo.get_brightness() if repo else DEFAULT_BRIGHTNESS
+
         try:
-            builder = MessageBuilder(background=background, speed=speed, font=font)
+            builder = MessageBuilder(
+                background=background, speed=speed, font=font, brightness=brightness
+            )
             builder.add_text(text, color)
             message = builder.build()
         except ValueError as e:

@@ -22,9 +22,15 @@ Raspberry Pi software to control a "Lichtkrant" (Dutch: light newspaper) - a scr
 
 | Section | Bytes | Content |
 |---------|-------|---------|
-| Header | 6 | `0xFE`, background, speed, font, `0x00`, `0x00` |
+| Header | 6 | `0xFE`, background, speed, font, brightness, `0x00` |
 | Text | 2 per char | ASCII byte (0x00-0x7F), color byte |
 | Terminator | 2 | `0xAA`, `0xAA` |
+
+### Brightness
+
+The display has no brightness control of its own, so the Pi sends it in the
+first spare header byte: `0x01` (dimmest) to `0x04` (brightest). It is a global
+setting stored in the database and set on the Configuration page. Default is 4.
 
 ### Color Codes
 

@@ -49,6 +49,11 @@ class ControlCode(IntEnum):
     LITERAL_HASH = 0x06
 
 
+# Display brightness, sent in the first spare header byte (1 = dimmest)
+MIN_BRIGHTNESS = 1
+MAX_BRIGHTNESS = 4
+DEFAULT_BRIGHTNESS = MAX_BRIGHTNESS
+
 # Protocol markers
 HEADER_START = 0xFE
 TERMINATOR = bytes([0xAA, 0xAA])

@@ -44,7 +44,10 @@ def decode(data: bytes) -> list[str]:
     bg = _BG_COLORS.get(buf[1], f"0x{buf[1]:02X}")
     speed = buf[2]
     font = _FONTS.get(buf[3], f"0x{buf[3]:02X}")
-    lines.append(f"Header: bg={bg} speed={speed} font={font}")
+    brightness = buf[4]
+    lines.append(
+        f"Header: bg={bg} speed={speed} font={font} brightness={brightness}"
+    )
 
     # Content (after 6-byte header, before 2-byte terminator)
     content = buf[6:-2]

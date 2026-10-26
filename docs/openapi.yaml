@@ -301,6 +301,48 @@ paths:
         "500":
           description: Setting the system time failed
 
+  /api/settings/brightness:
+    get:
+      summary: Get the display brightness
+      responses:
+        "200":
+          description: Current brightness level
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Brightness"
+        "503":
+          description: Database not configured
+    put:
+      summary: Set the display brightness
+      description: |
+        Stores the brightness level. It is sent in the first spare header
+        byte of every message from the next message on.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [brightness]
+              properties:
+                brightness:
+                  type: integer
+                  minimum: 1
+                  maximum: 4
+                  description: 1 is dimmest, 4 is brightest
+      responses:
+        "200":
+          description: Brightness set
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Brightness"
+        "400":
+          description: Missing or invalid brightness
+        "503":
+          description: Database not configured
+
   /colors:
     get:
       summary: List available colors
@@ -339,6 +381,21 @@ paths:
 
 components:
   schemas:
+    Brightness:
+      type: object
+      properties:
+        brightness:
+          type: integer
+          minimum: 1
+          maximum: 4
+          example: 4
+        min:
+          type: integer
+          example: 1
+        max:
+          type: integer
+          example: 4
+
     SystemTime:
       type: object
       properties:

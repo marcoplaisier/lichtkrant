@@ -25,6 +25,7 @@ dev = [
     "mypy>=1.10.0",
     "types-PyYAML>=6.0",
     "types-qrcode>=8.0",
+    "pre-commit>=4.7.0",
 ]
 
 [project.scripts]

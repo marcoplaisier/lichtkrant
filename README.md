@@ -282,14 +282,16 @@ Use `--no-wifi` to disable both the access point and captive portal.
 ## Development
 
 ```bash
-# Install with dev dependencies
+# Install with dev dependencies and the pre-commit hook
 uv sync --extra dev
+uv run pre-commit install
 
 # Run tests
 uv run pytest
 
-# Lint
+# Lint and format check
 uv run ruff check src/ tests/
+uv run ruff format --check src/ tests/
 
 # Type check
 uv run mypy src/
@@ -300,3 +302,5 @@ uv run lichtkrant --no-spi --no-wifi --debug
 # Run with SPI message logging (no hardware needed)
 uv run lichtkrant --dry-run --no-wifi --debug
 ```
+
+The pre-commit hook and CI (`.github/workflows/ci.yml`) both run ruff, the format check, strict mypy and pytest.

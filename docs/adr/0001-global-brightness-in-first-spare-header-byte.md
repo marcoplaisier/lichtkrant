@@ -1,6 +1,6 @@
 # Brightness is one global setting, sent in the first spare header byte
 
-The display controller has no brightness input of its own, so every message carries the level in header byte 4, the first of the two spare bytes. Byte 5 stays `0x00`, free for a later protocol addition. Brightness is a single display-wide setting rather than a property of each text: it describes where the display stands (a bright shop window versus a dark room), not what a text says, and a per-text level would make the display flicker between texts. The default is 1, because level 4 proved uncomfortably bright on the real display.
+The display controller has no brightness input of its own, so every message carries the level in header byte 4, the first of the two spare bytes. Byte 5 stays `0x00`, free for a later protocol addition. Brightness is a single display-wide setting rather than a property of each text: it suits where the display stands (a bright shop window versus a dark room), not what a text says. Per-text brightness was the alternative, and would need a field on every text. The default is 1, because level 4 proved uncomfortably bright on the real display.
 
 ## Consequences
 

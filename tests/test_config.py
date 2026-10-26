@@ -31,13 +31,14 @@ class TestConfigLoad:
         assert config.web.port == 8080
 
     def test_load_from_yaml(self):
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False
-        ) as f:
-            yaml.safe_dump({
-                "web": {"port": 9090, "host": "127.0.0.1"},
-                "wifi": {"ssid": "TestNet"},
-            }, f)
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+            yaml.safe_dump(
+                {
+                    "web": {"port": 9090, "host": "127.0.0.1"},
+                    "wifi": {"ssid": "TestNet"},
+                },
+                f,
+            )
             f.flush()
 
             config = Config.load(f.name)
@@ -49,9 +50,7 @@ class TestConfigLoad:
         assert config.spi.device == "/dev/spidev0.0"
 
     def test_load_empty_yaml(self):
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             f.write("")
             f.flush()
 
@@ -60,9 +59,7 @@ class TestConfigLoad:
         assert config.web.port == 8080
 
     def test_load_partial_yaml(self):
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             yaml.safe_dump({"spi": {"speed_hz": 250000}}, f)
             f.flush()
 

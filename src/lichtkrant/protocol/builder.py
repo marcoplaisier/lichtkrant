@@ -49,7 +49,10 @@ class MessageBuilder:
             if char == "#":
                 # Escape literal '#' using control sequence
                 escape_seq = [
-                    CONTROL_CHAR, ControlCode.LITERAL_HASH, CONTROL_CHAR, color
+                    CONTROL_CHAR,
+                    ControlCode.LITERAL_HASH,
+                    CONTROL_CHAR,
+                    color,
                 ]
                 self._content.extend(escape_seq)
             else:
@@ -104,14 +107,16 @@ class MessageBuilder:
 
     def build(self) -> bytes:
         """Build the complete message bytes."""
-        header = bytes([
-            HEADER_START,
-            self._background,
-            self._speed,
-            self._font,
-            self._brightness,
-            0x00,
-        ])
+        header = bytes(
+            [
+                HEADER_START,
+                self._background,
+                self._speed,
+                self._font,
+                self._brightness,
+                0x00,
+            ]
+        )
         return header + bytes(self._content) + TERMINATOR
 
     def clear(self) -> MessageBuilder:

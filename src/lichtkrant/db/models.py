@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Any
 
 
 @dataclass
@@ -20,9 +21,9 @@ class TextSegment:
     times: int = 0  # repeat count for blink
     scroll_off: bool = False  # flash: scroll off vs instant off
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
-        d: dict = {"type": self.type}
+        d: dict[str, Any] = {"type": self.type}
         match self.type:
             case "pause":
                 d["duration"] = self.duration
@@ -57,7 +58,7 @@ class Text:
             seg.text for seg in self.segments if seg.type in ("text", "flash")
         )
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
         return {
             "id": self.id,
@@ -78,7 +79,7 @@ class QueueEntry:
     text_id: int
     position: int
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
         return {
             "id": self.id,

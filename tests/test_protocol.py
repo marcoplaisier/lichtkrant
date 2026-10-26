@@ -114,8 +114,11 @@ class TestMessageBuilder:
                 TextSegment(type="pause", duration=3),
                 TextSegment(type="fast_blink", times=2),
                 TextSegment(
-                    type="flash", text="GO", color="RED",
-                    duration=5, scroll_off=True,
+                    type="flash",
+                    text="GO",
+                    color="RED",
+                    duration=5,
+                    scroll_off=True,
                 ),
             ],
             background="NONE",
@@ -139,7 +142,9 @@ class TestMessageBuilder:
                     builder.add_slow_blink(seg.times)
                 case "flash":
                     builder.add_flash(
-                        seg.text, seg.duration, Color[seg.color],
+                        seg.text,
+                        seg.duration,
+                        Color[seg.color],
                         scroll_off=seg.scroll_off,
                     )
                 case _:

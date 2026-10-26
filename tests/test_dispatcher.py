@@ -75,8 +75,11 @@ class TestBuildMessage:
             id=None,
             segments=[
                 TextSegment(
-                    type="flash", text="SALE", color="RED",
-                    duration=2, scroll_off=True,
+                    type="flash",
+                    text="SALE",
+                    color="RED",
+                    duration=2,
+                    scroll_off=True,
                 ),
             ],
             background="NONE",

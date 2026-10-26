@@ -2,14 +2,15 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from flask import Flask, redirect, render_template, request
+from werkzeug.wrappers import Response
 
 if TYPE_CHECKING:
     from lichtkrant.config import Config
     from lichtkrant.db import TextRepository
-    from lichtkrant.spi import SPIDriver
+    from lichtkrant.spi import Driver
 
 from lichtkrant import system_time
 from lichtkrant.db.models import Text, TextSegment
@@ -24,7 +25,7 @@ from lichtkrant.protocol.constants import (
 
 def create_app(
     config: Config,
-    spi_driver: SPIDriver | None = None,
+    spi_driver: Driver | None = None,
     repository: TextRepository | None = None,
     portal_ip: str | None = None,
 ) -> Flask:
@@ -40,10 +41,11 @@ def create_app(
         portal_base = f"http://{portal_ip}:{config.web.port}"
 
         @app.before_request
-        def captive_portal_redirect():
+        def captive_portal_redirect() -> Response | None:
             host = request.host.split(":")[0]
             if host not in ("localhost", "127.0.0.1", portal_ip):
                 return redirect(f"{portal_base}/welcome", code=302)
+            return None
 
     # --- Page routes ---
 
@@ -142,7 +144,7 @@ def create_app(
     # --- Direct send ---
 
     @app.route("/api/send", methods=["POST"])
-    def send_message() -> tuple[dict, int]:
+    def send_message() -> tuple[dict[str, Any], int]:
         """Send a message to the display."""
         data = request.get_json()
         if not data:
@@ -196,12 +198,12 @@ def create_app(
 
     # Legacy redirect for old /send endpoint
     @app.route("/send", methods=["POST"])
-    def send_message_legacy() -> tuple[dict, int]:
+    def send_message_legacy() -> tuple[dict[str, Any], int]:
         """Legacy redirect for direct send."""
         return send_message()
 
     @app.route("/colors")
-    def get_colors() -> dict:
+    def get_colors() -> dict[str, Any]:
         """Return available colors."""
         return {
             "text_colors": [c.name for c in Color],
@@ -209,12 +211,12 @@ def create_app(
         }
 
     @app.route("/fonts")
-    def get_fonts() -> dict:
+    def get_fonts() -> dict[str, Any]:
         """Return available fonts."""
         return {"fonts": [f.name for f in Font]}
 
     @app.route("/generate-hotspot-url")
-    def generate_hotspot_url() -> dict:
+    def generate_hotspot_url() -> dict[str, Any]:
         """Generate the captive portal URL for QR code."""
         host = config.web.host
         if host == "0.0.0.0":
@@ -225,7 +227,7 @@ def create_app(
 
     # --- Text CRUD API ---
 
-    def _extract_segments(data: dict) -> list[TextSegment]:
+    def _extract_segments(data: dict[str, Any]) -> list[TextSegment]:
         """Extract segments from request data, supporting both formats."""
         if "segments" in data:
             segments = []
@@ -238,26 +240,32 @@ def create_app(
                     color = seg.get("color", "WHITE").upper()
                     segments.append(TextSegment(text=text, color=color))
                 elif seg_type == "pause":
-                    segments.append(TextSegment(
-                        type="pause",
-                        duration=int(seg.get("duration", 1)),
-                    ))
+                    segments.append(
+                        TextSegment(
+                            type="pause",
+                            duration=int(seg.get("duration", 1)),
+                        )
+                    )
                 elif seg_type in ("fast_blink", "slow_blink"):
-                    segments.append(TextSegment(
-                        type=seg_type,
-                        times=int(seg.get("times", 1)),
-                    ))
+                    segments.append(
+                        TextSegment(
+                            type=seg_type,
+                            times=int(seg.get("times", 1)),
+                        )
+                    )
                 elif seg_type == "flash":
                     text = seg.get("text", "")
                     if not text:
                         continue
-                    segments.append(TextSegment(
-                        type="flash",
-                        text=text,
-                        color=seg.get("color", "WHITE").upper(),
-                        duration=int(seg.get("duration", 1)),
-                        scroll_off=bool(seg.get("scroll_off", False)),
-                    ))
+                    segments.append(
+                        TextSegment(
+                            type="flash",
+                            text=text,
+                            color=seg.get("color", "WHITE").upper(),
+                            duration=int(seg.get("duration", 1)),
+                            scroll_off=bool(seg.get("scroll_off", False)),
+                        )
+                    )
             return segments
         # Legacy format: single content + color
         content = data.get("content", "")
@@ -266,7 +274,9 @@ def create_app(
             return [TextSegment(text=content, color=color)]
         return []
 
-    def _validate_text_data(data: dict) -> tuple[dict | None, int | None]:
+    def _validate_text_data(
+        data: dict[str, Any],
+    ) -> tuple[dict[str, Any] | None, int | None]:
         """Validate text data, return (error_dict, status_code) or (None, None)."""
         segments = _extract_segments(data)
         if not segments:
@@ -297,7 +307,7 @@ def create_app(
         return None, None
 
     @app.route("/api/texts", methods=["GET"])
-    def api_list_texts() -> tuple[dict, int]:
+    def api_list_texts() -> tuple[dict[str, Any], int]:
         """List all texts."""
         repo = app.config.get("REPOSITORY")
         if not repo:
@@ -307,12 +317,12 @@ def create_app(
 
     # Legacy endpoint
     @app.route("/texts", methods=["GET"])
-    def list_texts() -> tuple[dict, int]:
+    def list_texts() -> tuple[dict[str, Any], int]:
         """Legacy: list all texts (JSON)."""
         return api_list_texts()
 
     @app.route("/api/texts", methods=["POST"])
-    def api_create_text() -> tuple[dict, int]:
+    def api_create_text() -> tuple[dict[str, Any], int]:
         """Create a new text."""
         repo = app.config.get("REPOSITORY")
         if not repo:
@@ -338,12 +348,12 @@ def create_app(
 
     # Legacy endpoint
     @app.route("/texts", methods=["POST"])
-    def create_text() -> tuple[dict, int]:
+    def create_text() -> tuple[dict[str, Any], int]:
         """Legacy: create a text."""
         return api_create_text()
 
     @app.route("/api/texts/<int:text_id>", methods=["GET"])
-    def api_get_text(text_id: int) -> tuple[dict, int]:
+    def api_get_text(text_id: int) -> tuple[dict[str, Any], int]:
         """Get a single text."""
         repo = app.config.get("REPOSITORY")
         if not repo:
@@ -355,11 +365,11 @@ def create_app(
         return {"text": text.to_dict()}, 200
 
     @app.route("/texts/<int:text_id>", methods=["GET"])
-    def get_text(text_id: int) -> tuple[dict, int]:
+    def get_text(text_id: int) -> tuple[dict[str, Any], int]:
         return api_get_text(text_id)
 
     @app.route("/api/texts/<int:text_id>", methods=["PUT"])
-    def api_update_text(text_id: int) -> tuple[dict, int]:
+    def api_update_text(text_id: int) -> tuple[dict[str, Any], int]:
         """Update a text."""
         repo = app.config.get("REPOSITORY")
         if not repo:
@@ -390,11 +400,11 @@ def create_app(
         return {"text": updated.to_dict()}, 200
 
     @app.route("/texts/<int:text_id>", methods=["PUT"])
-    def update_text(text_id: int) -> tuple[dict, int]:
+    def update_text(text_id: int) -> tuple[dict[str, Any], int]:
         return api_update_text(text_id)
 
     @app.route("/api/texts/<int:text_id>", methods=["DELETE"])
-    def api_delete_text(text_id: int) -> tuple[dict, int]:
+    def api_delete_text(text_id: int) -> tuple[dict[str, Any], int]:
         """Delete a text."""
         repo = app.config.get("REPOSITORY")
         if not repo:
@@ -405,13 +415,13 @@ def create_app(
         return {"success": True}, 200
 
     @app.route("/texts/<int:text_id>", methods=["DELETE"])
-    def delete_text(text_id: int) -> tuple[dict, int]:
+    def delete_text(text_id: int) -> tuple[dict[str, Any], int]:
         return api_delete_text(text_id)
 
     # --- Queue API ---
 
     @app.route("/api/queue", methods=["GET"])
-    def api_get_queue() -> tuple[dict, int]:
+    def api_get_queue() -> tuple[dict[str, Any], int]:
         """Get the display queue with embedded text data."""
         repo = app.config.get("REPOSITORY")
         if not repo:
@@ -426,7 +436,7 @@ def create_app(
         return {"queue": entries}, 200
 
     @app.route("/api/queue", methods=["POST"])
-    def api_add_to_queue() -> tuple[dict, int]:
+    def api_add_to_queue() -> tuple[dict[str, Any], int]:
         """Add a text to the queue."""
         repo = app.config.get("REPOSITORY")
         if not repo:
@@ -442,7 +452,7 @@ def create_app(
         return {"entry": entry.to_dict()}, 201
 
     @app.route("/api/queue", methods=["PUT"])
-    def api_reorder_queue() -> tuple[dict, int]:
+    def api_reorder_queue() -> tuple[dict[str, Any], int]:
         """Bulk reorder queue entries."""
         repo = app.config.get("REPOSITORY")
         if not repo:
@@ -464,7 +474,7 @@ def create_app(
         return {"success": True}, 200
 
     @app.route("/api/queue/<int:entry_id>", methods=["DELETE"])
-    def api_remove_from_queue(entry_id: int) -> tuple[dict, int]:
+    def api_remove_from_queue(entry_id: int) -> tuple[dict[str, Any], int]:
         """Remove a queue entry."""
         repo = app.config.get("REPOSITORY")
         if not repo:

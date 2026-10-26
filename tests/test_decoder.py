@@ -60,11 +60,7 @@ class TestDecode:
         assert any("Slow blink x2" in line for line in lines)
 
     def test_flash_hold(self) -> None:
-        msg = (
-            MessageBuilder()
-            .add_flash("GO", hold_seconds=4, color=Color.RED)
-            .build()
-        )
+        msg = MessageBuilder().add_flash("GO", hold_seconds=4, color=Color.RED).build()
         lines = decode(msg)
         assert any(
             '"GO"' in line and "RED" in line and "4s" in line and "hold" in line
@@ -81,11 +77,15 @@ class TestDecode:
         assert any("scroll-off" in line for line in lines)
 
     def test_background_and_font(self) -> None:
-        msg = MessageBuilder(
-            background=BackgroundColor.RED,
-            speed=100,
-            font=Font.MUNRO_SMALL,
-        ).add_text("X", Color.WHITE).build()
+        msg = (
+            MessageBuilder(
+                background=BackgroundColor.RED,
+                speed=100,
+                font=Font.MUNRO_SMALL,
+            )
+            .add_text("X", Color.WHITE)
+            .build()
+        )
         lines = decode(msg)
 
         assert "bg=RED" in lines[0]

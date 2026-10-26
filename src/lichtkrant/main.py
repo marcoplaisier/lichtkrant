@@ -6,10 +6,14 @@ import argparse
 import logging
 import sys
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from lichtkrant.config import Config
 from lichtkrant.db import TextRepository
 from lichtkrant.web import create_app
+
+if TYPE_CHECKING:
+    from lichtkrant.spi import Driver
 
 
 def parse_args() -> argparse.Namespace:
@@ -64,7 +68,7 @@ def main() -> int:
     print(f"Database initialized at {config.database.resolved_path}")
 
     # Initialize SPI if available and not disabled
-    spi_driver = None
+    spi_driver: Driver | None = None
     dispatcher = None
     if args.dry_run:
         from lichtkrant.dispatcher import TextDispatcher

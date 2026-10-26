@@ -31,9 +31,7 @@ class TestCaptivePortalRedirect:
     def test_foreign_host_redirects_to_welcome(self, portal_app):
         """Request with a foreign Host header should redirect to /welcome."""
         with portal_app.test_client() as client:
-            response = client.get(
-                "/", headers={"Host": "captive.apple.com"}
-            )
+            response = client.get("/", headers={"Host": "captive.apple.com"})
             assert response.status_code == 302
             assert response.headers["Location"] == "http://10.42.0.1:8080/welcome"
 
@@ -68,9 +66,7 @@ class TestCaptivePortalRedirect:
     def test_portal_disabled_no_redirect(self, no_portal_app):
         """With portal_ip=None, no redirects should happen."""
         with no_portal_app.test_client() as client:
-            response = client.get(
-                "/", headers={"Host": "captive.apple.com"}
-            )
+            response = client.get("/", headers={"Host": "captive.apple.com"})
             assert response.status_code == 200
 
     def test_windows_ncsi_redirects(self, portal_app):
@@ -85,9 +81,7 @@ class TestCaptivePortalRedirect:
     def test_welcome_page_renders(self, portal_app):
         """The /welcome page renders with a link to the dashboard."""
         with portal_app.test_client() as client:
-            response = client.get(
-                "/welcome", headers={"Host": "10.42.0.1:8080"}
-            )
+            response = client.get("/welcome", headers={"Host": "10.42.0.1:8080"})
             assert response.status_code == 200
             html = response.data.decode()
             assert 'href="/"' in html

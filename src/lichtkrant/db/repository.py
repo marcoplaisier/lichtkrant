@@ -6,6 +6,7 @@ import json
 import sqlite3
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 from lichtkrant.db.models import QueueEntry, Text, TextSegment
 from lichtkrant.protocol.constants import (
@@ -85,8 +86,7 @@ class TextRepository:
                 "SELECT id FROM texts WHERE active = 1 ORDER BY id"
             ).fetchall()
             active_ids = [
-                (row["id"], (i + 1) * 10)
-                for i, row in enumerate(active_rows)
+                (row["id"], (i + 1) * 10) for i, row in enumerate(active_rows)
             ]
 
             # Drop the active column by recreating the table
@@ -328,7 +328,7 @@ class TextRepository:
             conn.commit()
             return cursor.rowcount > 0
 
-    def reorder_queue(self, entries: list[dict]) -> bool:
+    def reorder_queue(self, entries: list[dict[str, Any]]) -> bool:
         """Bulk update queue positions. entries: [{id, position}, ...]"""
         with self._connect() as conn:
             for entry in entries:

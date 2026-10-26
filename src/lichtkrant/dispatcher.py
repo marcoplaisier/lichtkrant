@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from lichtkrant.config import Config
     from lichtkrant.db import TextRepository
     from lichtkrant.db.models import Text
-    from lichtkrant.spi import SPIDriver
+    from lichtkrant.spi import Driver
 
 from lichtkrant.protocol import Color, Font, MessageBuilder
 from lichtkrant.protocol.constants import BackgroundColor
@@ -27,7 +27,7 @@ class TextDispatcher:
         self,
         config: Config,
         repository: TextRepository,
-        spi_driver: SPIDriver,
+        spi_driver: Driver,
     ) -> None:
         self.config = config
         self.repository = repository

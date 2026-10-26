@@ -39,12 +39,7 @@ class TestSpySPIDriver:
         spy = SpySPIDriver(config)
         spy.open()
 
-        msg = (
-            MessageBuilder(speed=42)
-            .add_text("Hello", Color.RED)
-            .add_pause(3)
-            .build()
-        )
+        msg = MessageBuilder(speed=42).add_text("Hello", Color.RED).add_pause(3).build()
 
         with caplog.at_level(logging.INFO):
             spy.send(msg)

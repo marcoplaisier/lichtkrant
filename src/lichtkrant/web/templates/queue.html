@@ -145,7 +145,7 @@
         availableTexts.innerHTML = texts.map(t => `
             <div class="available-item" draggable="true" data-text-id="${t.id}">
                 <div class="item-title">${renderSegmentBadges(t.segments)}</div>
-                <div class="item-meta">#${t.id} | ${t.font} | Speed ${t.speed}</div>
+                <div class="item-meta">#${t.id} | ${t.font} | Speed: ${speedLabel(t.speed)}</div>
             </div>
         `).join('');
 
@@ -191,7 +191,7 @@
                 <span class="drag-handle">::</span>
                 <div class="queue-item-content">
                     <div class="item-title">${renderSegmentBadges(entry.text.segments)}</div>
-                    <div class="item-meta">#${entry.text.id} | ${entry.text.font} | Speed ${entry.text.speed}</div>
+                    <div class="item-meta">#${entry.text.id} | ${entry.text.font} | Speed: ${speedLabel(entry.text.speed)}</div>
                 </div>
                 <button class="btn btn-small btn-danger btn-remove-queue" onclick="removeFromQueue(${entry.id})">X</button>
             </div>

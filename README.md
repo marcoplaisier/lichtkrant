@@ -35,6 +35,8 @@ Raspberry Pi controller for a "Lichtkrant" (Dutch: light newspaper) — a scroll
 
 **Data flow:** User creates texts via the web UI and arranges them in a queue. The dispatcher thread continuously cycles through the queue, resolves any template variables, builds the binary protocol message, and sends it over SPI when the display signals ready via the REQUEST line.
 
+The binary display protocol is documented in [`docs/protocol.md`](docs/protocol.md).
+
 ### Key modules
 
 | Module | Purpose |

@@ -414,6 +414,11 @@ components:
         type:
           type: string
           enum: [text, pause, fast_blink, slow_blink, flash]
+          default: text
+          description: |
+            Required fields per type: text needs text and color; pause needs
+            duration; fast_blink and slow_blink need times; flash needs text,
+            color, duration and scroll_off. A segment without type is text.
         text:
           type: string
           description: Content for text and flash segments
@@ -422,9 +427,13 @@ components:
           description: Color name for text and flash segments
         duration:
           type: integer
+          minimum: 1
+          maximum: 255
           description: Seconds for pause or flash hold
         times:
           type: integer
+          minimum: 1
+          maximum: 255
           description: Repeat count for blink segments
         scroll_off:
           type: boolean

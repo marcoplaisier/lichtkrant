@@ -41,6 +41,10 @@ _Avoid_: Frame, packet
 The handshake signal the display controller raises when it is ready for the next message.
 _Avoid_: Ready line, interrupt
 
+**Unconfirmed clock**:
+The state of the Pi's clock after a boot, before anyone has set it or it has synced over the internet. Its time is probably wrong.
+_Avoid_: Unsynced clock, clock drift
+
 ## Appearance
 
 **Speed**:

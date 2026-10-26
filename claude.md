@@ -5,6 +5,11 @@ Raspberry Pi controller for a scrolling LED matrix display ("lichtkrant"). The d
 - **Protocol**: the binary message format, colors, control sequences and timing constraints are in `docs/protocol.md`. Read it before touching `protocol/`, `dispatcher.py` or anything that changes the bytes sent.
 - **REST API**: `docs/openapi.yaml` is the source of truth for endpoints and the text segment format.
 - **Configuration**: `config/config.yaml.example` holds the settings and their deployed values.
+- **Verifying a change**: run the app without hardware and exercise it in a browser, not only through tests. Use a scratch config that sets `web.port` and `database.path`, so the real database stays untouched. The log decodes every message sent, including its header and hex bytes:
+
+  ```bash
+  uv run lichtkrant --dry-run --no-wifi -c <scratch-config.yaml>
+  ```
 
 ## Agent skills
 
